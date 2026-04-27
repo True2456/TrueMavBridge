@@ -121,23 +121,7 @@ public class SettingPanelWidget extends ConstraintLayoutWidget<Boolean> {
             }
         }));
 
-        mCompositeDisposable.add(RTKStartServiceHelper.INSTANCE.getRtkModuleAvailable().distinctUntilChanged().observeOn(AndroidSchedulers.mainThread()).subscribe(aBoolean -> {
-            if (isSupportAdvRtk(aBoolean)) {
-                mAdapter.addRTKPanel();
-            } else {
-                mAdapter.removeRTKPanel();
-            }
-        }));
-
-        mCompositeDisposable.add(widgetModel.getPayloadConnectedStatusMapProcessor().toFlowableOnUI().subscribe(payloadIndexTypeBooleanHashMap -> {
-            if (payloadIndexTypeBooleanHashMap.isEmpty()) {
-                mAdapter.removePayloadPanel();
-            } else {
-                mAdapter.addPayloadPanel();
-            }
-
-        }));
-
+        // RTK and Payload panels are disabled for TrueGCS theme
     }
 
 
@@ -221,33 +205,31 @@ public class SettingPanelWidget extends ConstraintLayoutWidget<Boolean> {
         menus.clear();
         mFragments.clear();
 
+        // Aircraft
         menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_drone_active, R.drawable.uxsdk_ic_setting_drone));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_AIRCRAFT));
 
+        // Perception
         menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_obstacl_avoidance_active, R.drawable.uxsdk_ic_setting_obstacl_avoidance));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_PERCEPTION));
 
+        // RC
         menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_rc_active, R.drawable.uxsdk_ic_setting_rc));
-
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_hd_active, R.drawable.uxsdk_ic_setting_hd));
-
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_plane_electricity_active, R.drawable.uxsdk_ic_setting_plane_electricity));
-
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_camera_active, R.drawable.uxsdk_ic_setting_camera));
-
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_RC));
 
-        mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_HD));
+        // Streaming (Replacing HD)
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_hd_active, R.drawable.uxsdk_ic_setting_hd));
+        mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_STREAMING));
 
+        // Battery
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_plane_electricity_active, R.drawable.uxsdk_ic_setting_plane_electricity));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_BATTERY));
 
+        // Gimbal
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_camera_active, R.drawable.uxsdk_ic_setting_camera));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_GIMBAL));
 
-        if (isSupportAdvRtk(false)) {
-            menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_rtk_active, R.drawable.uxsdk_ic_setting_rtk));
-            mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_RTK));
-        }
-
+        // Common/More
         menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_more_active, R.drawable.uxsdk_ic_setting_more));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_COMMON));
     }
@@ -260,17 +242,26 @@ public class SettingPanelWidget extends ConstraintLayoutWidget<Boolean> {
 
     private void createSlaverFragments() {
         menus.clear();
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_rc_active, R.drawable.uxsdk_ic_setting_rc));
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_hd_active, R.drawable.uxsdk_ic_setting_hd));
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_plane_electricity_active, R.drawable.uxsdk_ic_setting_plane_electricity));
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_camera_active, R.drawable.uxsdk_ic_setting_camera));
-        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_more_active, R.drawable.uxsdk_ic_setting_more));
-
         mFragments.clear();
+
+        // RC
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_rc_active, R.drawable.uxsdk_ic_setting_rc));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_RC));
-        mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_HD));
+
+        // Streaming
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_hd_active, R.drawable.uxsdk_ic_setting_hd));
+        mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_STREAMING));
+
+        // Battery
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_plane_electricity_active, R.drawable.uxsdk_ic_setting_plane_electricity));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_BATTERY));
+
+        // Gimbal
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_camera_active, R.drawable.uxsdk_ic_setting_camera));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_GIMBAL));
+
+        // Common
+        menus.add(new MenuBean(R.drawable.uxsdk_ic_setting_more_active, R.drawable.uxsdk_ic_setting_more));
         mFragments.add(SettingMenuFragment.newInstance(MenuFragmentFactory.FRAGMENT_TAG_COMMON));
     }
 
@@ -325,7 +316,7 @@ public class SettingPanelWidget extends ConstraintLayoutWidget<Boolean> {
 
     //辅控不支持RTK
     private boolean isSupportAdvRtk(Boolean isRTKModuleAvailable) {
-        return !isSlaverRcMode(mCurrentRcMode) && isRTKModuleAvailable || ProductUtil.isM300Product() || ProductUtil.isM30Product() || ProductUtil.isM350Product()|| ProductUtil.isM400Product();
+        return false; // Force disabled for Mini 3
     }
 
     @Override

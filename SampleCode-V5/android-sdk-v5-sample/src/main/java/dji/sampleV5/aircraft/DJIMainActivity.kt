@@ -186,6 +186,10 @@ abstract class DJIMainActivity : AppCompatActivity() {
         enableShowCaseButton(binding.testingToolButton, cl)
     }
 
+    fun <T> enableTrueGCSMode(cl: Class<T>) {
+        enableShowCaseButton(binding.truegcsButton, cl)
+    }
+
     private fun <T> enableShowCaseButton(view: View, cl: Class<T>) {
         view.isEnabled = true
         view.setOnClickListener {

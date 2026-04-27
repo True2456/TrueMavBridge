@@ -23,7 +23,7 @@
             android:textColor="@color/uxsdk_white"
             android:textSize="@dimen/uxsdk_text_size_normal_medium"
             android:visibility="gone"
-            android:text="RTK 服务类型"
+            android:text="@string/uxsdk_rtk_type_switch_title"
             tools:visibility="visible" />
 
         <Spinner

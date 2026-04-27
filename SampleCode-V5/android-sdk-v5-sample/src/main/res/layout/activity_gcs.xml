@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/truegcs_bg"
+    tools:context="dji.sampleV5.aircraft.DJIGCSActivity">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Background Live Video -->
+        <dji.v5.ux.core.widget.fpv.FPVWidget
+            android:id="@+id/widget_primary_fpv"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Manual Touch Overlay (For Focus square) -->
+        <View
+            android:id="@+id/touch_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Top Status Bar Panel -->
+        <dji.v5.ux.core.panel.topbar.TopBarPanelWidget
+            android:id="@+id/panel_top_bar"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:background="@color/truegcs_dark_secondary"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:uxsdk_itemsMarginRight="16dp"
+            app:uxsdk_itemsSpacing="12dp" />
+
+        <!-- Flight Time Progress Bar -->
+        <dji.v5.ux.core.widget.remainingflighttime.RemainingFlightTimeWidget
+            android:id="@+id/widget_remaining_flight_time"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            app:layout_constraintTop_toBottomOf="@+id/panel_top_bar" />
+
+        <!-- Camera Quick Config (Functional Sliders) -->
+        <dji.v5.ux.visualcamera.CameraVisiblePanelWidget
+            android:id="@+id/widget_camera_config"
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            android:layout_marginTop="8dp"
+            android:background="@color/truegcs_dark_secondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/widget_remaining_flight_time" />
+
+        <!-- Left Side Telemetry Dashboard -->
+        <LinearLayout
+            android:id="@+id/left_dashboard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="80dp"
+            android:background="@color/truegcs_cyan_transparent"
+            android:orientation="vertical"
+            android:padding="12dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ALTITUDE"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+            <dji.v5.ux.core.widget.altitude.AGLAltitudeWidget
+                android:id="@+id/widget_altitude"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <Space android:layout_width="1dp" android:layout_height="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DISTANCE"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+            <dji.v5.ux.core.widget.distancehome.DistanceHomeWidget
+                android:id="@+id/widget_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <Space android:layout_width="1dp" android:layout_height="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HORIZ SPEED"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+            <dji.v5.ux.core.widget.horizontalvelocity.HorizontalVelocityWidget
+                android:id="@+id/widget_speed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- HSI (Compass) -->
+        <FrameLayout
+            android:id="@+id/hsi_container"
+            android:layout_width="350dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:layout_constraintStart_toStartOf="@+id/left_dashboard"
+            app:layout_constraintTop_toBottomOf="@+id/left_dashboard">
+
+            <dji.v5.ux.core.widget.hsi.HorizontalSituationIndicatorWidget
+                android:id="@+id/widget_hsi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scaleX="0.85"
+                android:scaleY="0.85"
+                android:transformPivotX="0dp"
+                android:transformPivotY="0dp" />
+        </FrameLayout>
+
+        <!-- Right Side Main Camera Controls -->
+        <dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
+            android:id="@+id/widget_camera_controls"
+            android:layout_width="wrap_content"
+            android:layout_height="220dp"
+            android:layout_marginEnd="80dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Toggle Button for Deep Settings -->
+        <Button
+            android:id="@+id/btn_toggle_camera"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="16dp"
+            android:background="@color/truegcs_cyan"
+            android:text="MENU"
+            android:textColor="@color/truegcs_bg"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="@+id/widget_camera_controls"
+            app:layout_constraintTop_toBottomOf="@+id/widget_camera_controls" />
+
+        <!-- System Message Overlay -->
+        <dji.v5.ux.core.widget.systemstatus.SystemStatusWidget
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/widget_camera_config" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- RIGHT DRAWER: Comprehensive Aircraft Settings -->
+    <LinearLayout
+        android:id="@+id/camera_settings_drawer_container"
+        android:layout_width="590dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:orientation="horizontal"
+        android:background="@color/truegcs_dark_secondary">
+
+        <dji.v5.ux.core.widget.setting.SettingPanelWidget
+            android:id="@+id/camera_settings_drawer"
+            android:layout_width="510dp"
+            android:layout_height="match_parent" />
+
+        <View
+            android:layout_width="80dp"
+            android:layout_height="match_parent" />
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>

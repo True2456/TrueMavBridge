@@ -245,6 +245,10 @@ public class EditorCell extends DividerConstraintLayout {
         mEditor.setEnabled(enable);
     }
 
+    public EditText getEditText() {
+        return mEditor;
+    }
+
     public void setFocusChangeValueCallBack(boolean isFocusChangeValueCallBack) {
         this.isFocusChangeValueCallBack = isFocusChangeValueCallBack;
     }

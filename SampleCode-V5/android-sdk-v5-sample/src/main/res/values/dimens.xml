@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- TrueGCS Custom Dimens -->
+    <dimen name="truegcs_hsi_width">250dp</dimen>
+
     <!--dialog -->
     <dimen name="image_dialog_width">340dp</dimen>
     <dimen name="gen_corner_radius">4dp</dimen>

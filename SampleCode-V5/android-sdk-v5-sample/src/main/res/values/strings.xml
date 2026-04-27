@@ -494,4 +494,19 @@ More refer to the release notes." </string>
     <string name="item_app_silently_upgrade_description">Demonstrate APP Silently Upgrade functions</string>
     <string name="btn_silently_upgrade_package">Set Silently Upgrade Package</string>
     <string name="btn_install_test_app">Install Test App</string>
+
+    <!-- UXSDK Overrides -->
+    <string name="uxsdk_battery_check_battery_detail_button_txt">Details</string>
+    <string name="uxsdk_hdmi_system_setting_mode_same">Mirror Screen</string>
+
+    <!-- Streaming Tab -->
+    <string name="streaming_tab_title">Streaming</string>
+    <string name="streaming_video_udp_port">Video UDP Port</string>
+    <string name="streaming_telemetry_udp_port">Telemetry UDP Port</string>
+    <string name="streaming_target_ip">Target IP Address</string>
+    <string name="streaming_enable_video">Enable Video Stream</string>
+    <string name="streaming_enable_telemetry">Enable Telemetry Stream</string>
+    <string name="streaming_status">Status</string>
+    <string name="streaming_status_idle">Idle</string>
+    <string name="streaming_status_active">Streaming...</string>
 </resources>

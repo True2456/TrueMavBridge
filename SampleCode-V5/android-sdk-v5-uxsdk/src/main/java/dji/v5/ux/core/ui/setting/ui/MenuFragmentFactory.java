@@ -31,6 +31,7 @@ public class MenuFragmentFactory {
     public static final String FRAGMENT_TAG_PAYLOAD = "PayloadFragment";
     public static final String FRAGMENT_TAG_SEARCHLIGHT_ACCESSORY = "SearchlightSettingFragment";
     public static final String FRAGMENT_TAG_RTK = "RtkMenuFragment";
+    public static final String FRAGMENT_TAG_STREAMING = "StreamingMenuFragment";
 
     public static MenuFragment getMenuFragment(String tag) {
         if (FRAGMENT_TAG_AIRCRAFT.equals(tag)) {
@@ -51,6 +52,8 @@ public class MenuFragmentFactory {
             return new PayloadFragment();
         } else if (FRAGMENT_TAG_RTK.equals(tag)) {
             return new RtkMenuFragment();
+        } else if (FRAGMENT_TAG_STREAMING.equals(tag)) {
+            return new dji.v5.ux.core.ui.setting.fragment.StreamingMenuFragment();
         } else {
             throw new IllegalArgumentException(tag + " Not support now.");
         }

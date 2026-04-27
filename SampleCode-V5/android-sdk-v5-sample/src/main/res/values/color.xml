@@ -87,4 +87,9 @@
     <color name="mission_edit_panel_container_bg">#FF111610</color>
     <color name="white_alpha_016">#29FFFFFF</color>
 
+    <!-- TrueGCS Theme -->
+    <color name="truegcs_bg">#090e11</color>
+    <color name="truegcs_cyan">#00ddff</color>
+    <color name="truegcs_cyan_transparent">#2600ddff</color>
+    <color name="truegcs_dark_secondary">#111a22</color>
 </resources>
