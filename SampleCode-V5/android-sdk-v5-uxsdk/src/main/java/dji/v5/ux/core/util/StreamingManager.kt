@@ -8,6 +8,11 @@ import dji.v5.manager.interfaces.ICameraStreamManager
 import dji.v5.utils.common.DJIExecutor
 import dji.v5.utils.common.LogUtils
 import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.v5.manager.datacenter.livestream.LiveStreamSettings
+import dji.v5.manager.datacenter.livestream.LiveStreamType
+import dji.v5.manager.datacenter.livestream.settings.RtmpSettings
+import dji.v5.common.callback.CommonCallbacks
+import dji.v5.common.error.IDJIError
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -20,7 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object StreamingManager {
     private const val TAG = "StreamingManager"
-    private var videoSocket: DatagramSocket? = null
     private var telemetrySocket: DatagramSocket? = null
     
     private val isVideoStreaming = AtomicBoolean(false)
@@ -33,47 +37,40 @@ object StreamingManager {
     private const val MAX_UDP_PAYLOAD = 65507
     private var seq: Byte = 0
 
-    private val videoReceiveStreamListener = ICameraStreamManager.ReceiveStreamListener { data, offset, length, _ ->
-        if (isVideoStreaming.get()) {
-            sendVideoData(data, offset, length)
-        }
-    }
-
     fun startVideoStreaming(port: Int, address: String) {
-        videoPort = port
-        targetAddress = InetAddress.getByName(address)
-        if (videoSocket == null) {
-            videoSocket = DatagramSocket().apply { broadcast = true }
-        }
-        isVideoStreaming.set(true)
-        MediaDataCenter.getInstance().cameraStreamManager.addReceiveStreamListener(ComponentIndexType.LEFT_OR_MAIN, videoReceiveStreamListener)
-        LogUtils.i(TAG, "Started video streaming on $address:$port")
+        val rtmpUrl = "rtmp://$address:$port/live/drone"
+        val liveStreamConfig = LiveStreamSettings.Builder()
+            .setLiveStreamType(LiveStreamType.RTMP)
+            .setRtmpSettings(
+                RtmpSettings.Builder()
+                    .setUrl(rtmpUrl)
+                    .build()
+            )
+            .build()
+            
+        val streamManager = MediaDataCenter.getInstance().liveStreamManager
+        streamManager.liveStreamSettings = liveStreamConfig
+        
+        streamManager.startStream(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                isVideoStreaming.set(true)
+                LogUtils.i(TAG, "Started RTMP streaming to $rtmpUrl")
+            }
+            override fun onFailure(error: IDJIError) {
+                LogUtils.e(TAG, "Failed to start RTMP stream: ${error.description()}")
+            }
+        })
     }
 
     fun stopVideoStreaming() {
-        isVideoStreaming.set(false)
-        MediaDataCenter.getInstance().cameraStreamManager.removeReceiveStreamListener(videoReceiveStreamListener)
-        videoSocket?.close()
-        videoSocket = null
-    }
-
-    private fun sendVideoData(data: ByteArray, offset: Int, length: Int) {
-        DJIExecutor.getExecutor().execute {
-            try {
-                if (length > MAX_UDP_PAYLOAD) {
-                    var remaining = length
-                    var currentOffset = offset
-                    while (remaining > 0) {
-                        val chunkSize = if (remaining > MAX_UDP_PAYLOAD) MAX_UDP_PAYLOAD else remaining
-                        videoSocket?.send(DatagramPacket(data, currentOffset, chunkSize, targetAddress, videoPort))
-                        currentOffset += chunkSize
-                        remaining -= chunkSize
-                    }
-                } else {
-                    videoSocket?.send(DatagramPacket(data, offset, length, targetAddress, videoPort))
-                }
-            } catch (e: Exception) {}
-        }
+        val streamManager = MediaDataCenter.getInstance().liveStreamManager
+        streamManager.stopStream(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                isVideoStreaming.set(false)
+                LogUtils.i(TAG, "Stopped RTMP streaming")
+            }
+            override fun onFailure(error: IDJIError) {}
+        })
     }
 
     fun startTelemetryStreaming(port: Int, address: String) {
@@ -100,6 +97,7 @@ object StreamingManager {
                     sendMavlinkHeartbeat()
                     sendMavlinkAttitude()
                     sendMavlinkPosition()
+                    sendMavlinkGpsRawInt()
                 } catch (e: Exception) {
                     LogUtils.e(TAG, "MAVLink loop error: ${e.message}")
                 }
@@ -152,6 +150,32 @@ object StreamingManager {
         sendMavlinkPacket(33, payload.array())
     }
 
+    private fun sendMavlinkGpsRawInt() {
+        val km = KeyManager.getInstance()
+        val loc = km.getValue(KeyTools.createKey(FlightControllerKey.KeyAircraftLocation))
+        val alt = km.getValue(KeyTools.createKey(FlightControllerKey.KeyAltitude)) ?: 0.0
+        val sats = km.getValue(KeyTools.createKey(FlightControllerKey.KeyGPSSatelliteCount)) ?: 0
+        val vel = km.getValue(KeyTools.createKey(FlightControllerKey.KeyAircraftVelocity))
+        
+        val speed = if (vel != null) Math.sqrt(vel.x * vel.x + vel.y * vel.y) else 0.0
+        
+        val fixType = if (sats >= 4 && loc != null && loc.latitude != 0.0) 3 else 0
+
+        val payload = ByteBuffer.allocate(30).order(ByteOrder.LITTLE_ENDIAN)
+        payload.putLong(System.currentTimeMillis() * 1000L) // time_usec (uint64)
+        payload.put(fixType.toByte()) // fix_type (uint8)
+        payload.putInt(((loc?.latitude ?: 0.0) * 1e7).toInt()) // lat (int32)
+        payload.putInt(((loc?.longitude ?: 0.0) * 1e7).toInt()) // lon (int32)
+        payload.putInt((alt * 1000).toInt()) // alt (int32)
+        payload.putShort(0xFFFF.toShort()) // eph (uint16)
+        payload.putShort(0xFFFF.toShort()) // epv (uint16)
+        payload.putShort((speed * 100).toInt().toShort()) // vel (uint16) cm/s
+        payload.putShort(0) // cog (uint16)
+        payload.put(sats.toByte()) // satellites_visible (uint8)
+        
+        sendMavlinkPacket(24, payload.array())
+    }
+
     private fun sendMavlinkPacket(msgId: Int, payload: ByteArray) {
         val packet = ByteBuffer.allocate(payload.size + 8).order(ByteOrder.LITTLE_ENDIAN)
         packet.put(0xFE.toByte())      // STX
@@ -165,9 +189,23 @@ object StreamingManager {
         var crc = 0xFFFF
         for (i in 1 until packet.position()) {
             var tmp = (packet.get(i).toInt() and 0xFF) xor (crc and 0xFF)
-            tmp = tmp xor (tmp shl 4)
+            tmp = (tmp xor (tmp shl 4)) and 0xFF
             crc = (crc shr 8) xor (tmp shl 8) xor (tmp shl 3) xor (tmp shr 4)
         }
+        
+        val crcExtra = when(msgId) {
+            0 -> 50
+            24 -> 24
+            30 -> 39
+            33 -> 104
+            else -> 0
+        }
+        if (crcExtra > 0) {
+            var tmp = (crcExtra and 0xFF) xor (crc and 0xFF)
+            tmp = (tmp xor (tmp shl 4)) and 0xFF
+            crc = (crc shr 8) xor (tmp shl 8) xor (tmp shl 3) xor (tmp shr 4)
+        }
+        
         packet.putShort(crc.toShort())
         
         val data = packet.array()

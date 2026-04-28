@@ -501,7 +501,7 @@ More refer to the release notes." </string>
 
     <!-- Streaming Tab -->
     <string name="streaming_tab_title">Streaming</string>
-    <string name="streaming_video_udp_port">Video UDP Port</string>
+    <string name="streaming_video_udp_port">RTMP Video Port</string>
     <string name="streaming_telemetry_udp_port">Telemetry UDP Port</string>
     <string name="streaming_target_ip">Target IP Address</string>
     <string name="streaming_enable_video">Enable Video Stream</string>

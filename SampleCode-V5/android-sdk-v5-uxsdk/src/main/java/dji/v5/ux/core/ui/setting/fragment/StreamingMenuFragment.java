@@ -82,7 +82,7 @@ public class StreamingMenuFragment extends MenuFragment {
 
         // Load saved settings
         String savedIp = DjiSharedPreferencesManager.getString(getContext(), TARGET_IP_KEY, "255.255.255.255");
-        String savedVideoPort = DjiSharedPreferencesManager.getString(getContext(), VIDEO_PORT_KEY, "5008");
+        String savedVideoPort = DjiSharedPreferencesManager.getString(getContext(), VIDEO_PORT_KEY, "15560");
         String savedTelemetryPort = DjiSharedPreferencesManager.getString(getContext(), TELEMETRY_PORT_KEY, "14550");
         
         if (ipCell != null) ipCell.getEditText().setText(savedIp);

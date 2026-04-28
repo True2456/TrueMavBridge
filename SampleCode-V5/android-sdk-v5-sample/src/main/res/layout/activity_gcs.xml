@@ -133,6 +133,29 @@
                 android:transformPivotY="0dp" />
         </FrameLayout>
 
+        <!-- Flight Action Controls -->
+        <LinearLayout
+            android:id="@+id/flight_controls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <dji.v5.ux.flight.takeoff.TakeOffWidget
+                android:id="@+id/widget_takeoff"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="32dp" />
+
+            <dji.v5.ux.flight.returnhome.ReturnHomeWidget
+                android:id="@+id/widget_rth"
+                android:layout_width="50dp"
+                android:layout_height="50dp" />
+        </LinearLayout>
+
         <!-- Right Side Main Camera Controls -->
         <dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
             android:id="@+id/widget_camera_controls"
