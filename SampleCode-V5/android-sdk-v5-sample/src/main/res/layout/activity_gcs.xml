@@ -12,15 +12,44 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Background Live Video -->
-        <dji.v5.ux.core.widget.fpv.FPVWidget
-            android:id="@+id/widget_primary_fpv"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+        <!-- Main View Container (Full Screen) -->
+        <FrameLayout
+            android:id="@+id/main_view_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <dji.v5.ux.core.widget.fpv.FPVWidget
+                android:id="@+id/widget_primary_fpv"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+
+        <!-- PIP View Container (Floating Window) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/pip_view_container"
+            android:layout_width="240dp"
+            android:layout_height="135dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="100dp"
+            app:cardBackgroundColor="@color/black"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <WebView
+                android:id="@+id/map_webview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+            
+            <View
+                android:id="@+id/pip_click_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                android:focusable="true" />
+        </androidx.cardview.widget.CardView>
 
         <!-- Manual Touch Overlay (For Focus square) -->
         <View
@@ -65,10 +94,10 @@
             android:id="@+id/left_dashboard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="80dp"
-            android:background="@color/truegcs_cyan_transparent"
+            android:layout_marginStart="16dp"
+            android:background="@color/truegcs_dark_transparent"
             android:orientation="vertical"
-            android:padding="12dp"
+            android:padding="10dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
@@ -78,35 +107,35 @@
                 android:layout_height="wrap_content"
                 android:text="ALTITUDE"
                 android:textColor="@color/truegcs_cyan"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:textStyle="bold" />
             <dji.v5.ux.core.widget.altitude.AGLAltitudeWidget
                 android:id="@+id/widget_altitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
-            <Space android:layout_width="1dp" android:layout_height="12dp" />
+            <Space android:layout_width="1dp" android:layout_height="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="DISTANCE"
                 android:textColor="@color/truegcs_cyan"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:textStyle="bold" />
             <dji.v5.ux.core.widget.distancehome.DistanceHomeWidget
                 android:id="@+id/widget_distance"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
-            <Space android:layout_width="1dp" android:layout_height="12dp" />
+            <Space android:layout_width="1dp" android:layout_height="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="HORIZ SPEED"
+                android:text="SPEED"
                 android:textColor="@color/truegcs_cyan"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:textStyle="bold" />
             <dji.v5.ux.core.widget.horizontalvelocity.HorizontalVelocityWidget
                 android:id="@+id/widget_speed"
@@ -114,23 +143,20 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- HSI (Compass) -->
+        <!-- Minimalist Compass Arrow -->
         <FrameLayout
-            android:id="@+id/hsi_container"
-            android:layout_width="350dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:layout_constraintStart_toStartOf="@+id/left_dashboard"
-            app:layout_constraintTop_toBottomOf="@+id/left_dashboard">
+            android:id="@+id/compass_container"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
 
-            <dji.v5.ux.core.widget.hsi.HorizontalSituationIndicatorWidget
-                android:id="@+id/widget_hsi"
+            <dji.v5.ux.core.widget.compass.CompassWidget
+                android:id="@+id/widget_compass"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scaleX="0.85"
-                android:scaleY="0.85"
-                android:transformPivotX="0dp"
-                android:transformPivotY="0dp" />
+                android:layout_height="match_parent" />
         </FrameLayout>
 
         <!-- Flight Action Controls -->

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { padding: 0; margin: 0; background: #111; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; }
+        .drone-icon { transition: transform 0.2s linear; }
+        #status-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0ff;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border: 1px solid #0ff;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="status-msg">WAITING FOR GPS...</div>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            tap: false // Disable tap delay for mobile
+        }).setView([0, 0], 2);
+
+        // ArcGIS World Imagery (Satellite)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            minZoom: 2
+        }).addTo(map);
+
+        var droneIcon = L.divIcon({
+            className: 'drone-icon',
+            html: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z" fill="#00FFFF" stroke="#000" stroke-width="1"/></svg>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        var marker = L.marker([0, 0], { icon: droneIcon, opacity: 0 }).addTo(map);
+        var isFirstLocation = true;
+
+        function updateLocation(lat, lng, heading) {
+            // Ignore 0,0 (often a sign of no GPS fix)
+            if (lat === 0 && lng === 0) return;
+
+            document.getElementById('status-msg').style.display = 'none';
+            marker.setOpacity(1);
+
+            var newLatLng = new L.LatLng(lat, lng);
+            marker.setLatLng(newLatLng);
+            
+            var iconElement = document.querySelector('.drone-icon svg');
+            if (iconElement) {
+                iconElement.style.transform = 'rotate(' + heading + 'deg)';
+            }
+
+            if (isFirstLocation) {
+                map.setView(newLatLng, 18);
+                isFirstLocation = false;
+            } else {
+                // Smooth follow
+                map.panTo(newLatLng);
+            }
+        }
+    </script>
+</body>
+</html>
