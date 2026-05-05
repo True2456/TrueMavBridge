@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlin.concurrent.thread
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.WindowManager
@@ -89,6 +90,7 @@ class DJIGCSActivity : AppCompatActivity() {
     private var mapWaypoints = mutableListOf<WaypointItem>()
     private var surveyAreaPoints = mutableListOf<WaypointItem>()
     private var isMappingGridActive = false
+    private var isGeneratingGrid = false
 
     private lateinit var mavlinkHandler: MavlinkMissionHandler
     private lateinit var btnMissionMenu: ImageButton
@@ -325,6 +327,7 @@ class DJIGCSActivity : AppCompatActivity() {
         }
 
         dialogView.findViewById<View>(R.id.btn_generate_grid).setOnClickListener {
+            if (isGeneratingGrid) return@setOnClickListener
             if (surveyAreaPoints.size < 3) {
                 Log.e("TrueGCS", "Need at least 3 points to define an area")
                 return@setOnClickListener
@@ -333,9 +336,13 @@ class DJIGCSActivity : AppCompatActivity() {
             val alt = editAlt.text.toString().toDoubleOrNull() ?: 50.0
             val speed = editSpeed.text.toString().toDoubleOrNull() ?: 5.0
             
-            val forwardSpacing = forwardMult * alt
-            val laneSpacing = laneMult * alt
+            val forwardSpacing = Math.max(1.0, forwardMult * alt)
+            val laneSpacing = Math.max(1.0, laneMult * alt)
 
+            // Visual feedback
+            it.isEnabled = false
+            it.alpha = 0.5f
+            
             generateGrid(forwardSpacing, laneSpacing, alt, speed)
             dialog.dismiss()
         }
@@ -348,13 +355,19 @@ class DJIGCSActivity : AppCompatActivity() {
     }
 
     private fun generateGrid(forwardSpacing: Double, laneSpacing: Double, altitude: Double, speed: Double) {
+        if (isGeneratingGrid) return
+        isGeneratingGrid = true
+
+        // Capture survey points to avoid concurrent modification issues
+        val corners = surveyAreaPoints.toList()
+        
         // Simple Bounding Box Grid
         var minLat = 90.0
         var maxLat = -90.0
         var minLng = 180.0
         var maxLng = -180.0
 
-        for (wp in surveyAreaPoints) {
+        for (wp in corners) {
             if (wp.latitude < minLat) minLat = wp.latitude
             if (wp.latitude > maxLat) maxLat = wp.latitude
             if (wp.longitude < minLng) minLng = wp.longitude
@@ -373,52 +386,63 @@ class DJIGCSActivity : AppCompatActivity() {
         var currentLat = minLat
         var goingRight = true
 
-        while (currentLat <= maxLat) {
-            val linePoints = mutableListOf<Map<String, Double>>()
-            if (goingRight) {
-                var currentLng = minLng
-                while (currentLng <= maxLng) {
-                    if (isPointInPolygon(currentLat, currentLng, surveyAreaPoints)) {
-                        newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
-                        linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
-                    }
-                    currentLng += lngSpacingDeg
-                    if (newGridWps.size > 1000) break // Safety limit
-                }
-            } else {
-                var currentLng = maxLng
-                while (currentLng >= minLng) {
-                    if (isPointInPolygon(currentLat, currentLng, surveyAreaPoints)) {
-                        newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
-                        linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
-                    }
-                    currentLng -= lngSpacingDeg
-                    if (newGridWps.size > 1000) break // Safety limit
-                }
-            }
-            webViewPoints.addAll(linePoints)
-            currentLat += latSpacingDeg
-            goingRight = !goingRight
-            if (newGridWps.size > 1000) break // Safety limit
-        }
-
-        runOnUiThread {
-            mapWaypoints = newGridWps
-            isMappingGridActive = true
+        thread {
             try {
-                val jsonArray = org.json.JSONArray()
-                for (p in webViewPoints) {
-                    val obj = org.json.JSONObject()
-                    obj.put("lat", p["lat"])
-                    obj.put("lng", p["lng"])
-                    jsonArray.put(obj)
+                Log.i("TrueGCS", "Starting grid gen: Spacing L=$laneSpacing, F=$forwardSpacing")
+                while (currentLat <= maxLat && newGridWps.size < 1000) {
+                    val linePoints = mutableListOf<Map<String, Double>>()
+                    if (goingRight) {
+                        var currentLng = minLng
+                        while (currentLng <= maxLng && newGridWps.size < 1000) {
+                            if (isPointInPolygon(currentLat, currentLng, corners)) {
+                                newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
+                                linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
+                            }
+                            currentLng += lngSpacingDeg
+                        }
+                    } else {
+                        var currentLng = maxLng
+                        while (currentLng >= minLng && newGridWps.size < 1000) {
+                            if (isPointInPolygon(currentLat, currentLng, corners)) {
+                                newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
+                                linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
+                            }
+                            currentLng -= lngSpacingDeg
+                        }
+                    }
+                    webViewPoints.addAll(linePoints)
+                    currentLat += latSpacingDeg
+                    goingRight = !goingRight
                 }
-                mapWebView.evaluateJavascript("setGridPoints('$jsonArray')", null)
+                
+                runOnUiThread {
+                    isGeneratingGrid = false
+                    applyGridToMap(newGridWps, webViewPoints)
+                }
             } catch (e: Exception) {
-                Log.e("TrueGCS", "Error serializing grid points", e)
+                isGeneratingGrid = false
+                Log.e("TrueGCS", "Grid generation thread crashed", e)
             }
-            Log.i("TrueGCS", "Grid generated with ${newGridWps.size} waypoints")
         }
+    }
+
+    private fun applyGridToMap(newGridWps: List<WaypointItem>, webViewPoints: List<Map<String, Double>>) {
+
+        mapWaypoints = newGridWps.toMutableList()
+        isMappingGridActive = true
+        try {
+            val jsonArray = org.json.JSONArray()
+            for (p in webViewPoints) {
+                val obj = org.json.JSONObject()
+                obj.put("lat", p["lat"])
+                obj.put("lng", p["lng"])
+                jsonArray.put(obj)
+            }
+            mapWebView.evaluateJavascript("setGridPoints('$jsonArray')", null)
+        } catch (e: Exception) {
+            Log.e("TrueGCS", "Error serializing grid points", e)
+        }
+        Log.i("TrueGCS", "Grid generated with ${newGridWps.size} waypoints")
     }
 
     private fun enableDrag(view: View, targetView: View = view, onClick: (() -> Unit)? = null) {
@@ -485,10 +509,13 @@ class DJIGCSActivity : AppCompatActivity() {
             val pi = polygon[i]
             val pj = polygon[j]
 
-            if (((pi.longitude <= lng && lng < pj.longitude) || (pj.longitude <= lng && lng < pi.longitude)) &&
-                (lat < (pj.latitude - pi.latitude) * (lng - pi.longitude) / (pj.longitude - pi.longitude) + pi.latitude)
-            ) {
-                intersectCount++
+            if (((pi.longitude <= lng && lng < pj.longitude) || (pj.longitude <= lng && lng < pi.longitude))) {
+                val dx = pj.longitude - pi.longitude
+                if (dx != 0.0) {
+                    if (lat < (pj.latitude - pi.latitude) * (lng - pi.longitude) / dx + pi.latitude) {
+                        intersectCount++
+                    }
+                }
             }
         }
         return intersectCount % 2 != 0
