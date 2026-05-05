@@ -7,12 +7,15 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.os.SystemClock
+import android.view.Gravity
+import android.view.WindowManager
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.EditText
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -29,17 +32,23 @@ import dji.sdk.keyvalue.value.common.DoublePoint2D
 import dji.v5.manager.KeyManager
 import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
+import dji.v5.common.callback.CommonCallbacks
+import dji.v5.common.error.IDJIError
+import dji.sdk.keyvalue.value.common.EmptyMsg
 import dji.v5.ux.core.panel.topbar.TopBarPanelWidget
 import dji.v5.ux.core.widget.fpv.FPVWidget
-import dji.v5.ux.core.widget.compass.CompassWidget
 import dji.v5.ux.core.widget.setting.SettingPanelWidget
 import dji.v5.ux.visualcamera.CameraVisiblePanelWidget
 import dji.v5.ux.core.util.ViewUtil
+import dji.v5.ux.core.util.MobileGPSLocationUtil
+import android.location.Location
+import android.location.LocationListener
 import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
 import dji.v5.ux.core.util.StreamingManager
 import dji.v5.ux.core.util.MavlinkMissionHandler
 import dji.v5.ux.core.util.VirtualStickMissionManager
+import dji.v5.ux.core.util.WaypointItem
 import dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
 import dji.v5.et.create
 import dji.v5.et.set
@@ -52,7 +61,6 @@ class DJIGCSActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var primaryFpvWidget: FPVWidget
     private lateinit var topBarPanel: TopBarPanelWidget
-    private lateinit var compassWidget: CompassWidget
     private lateinit var cameraQuickConfig: CameraVisiblePanelWidget
     private lateinit var cameraSettingsDrawer: SettingPanelWidget
     private lateinit var touchOverlay: View
@@ -65,10 +73,10 @@ class DJIGCSActivity : AppCompatActivity() {
     private var aircraftLng = 0.0
     private var aircraftHeading = 0.0
     
-    private lateinit var btnToggleMenu: Button
     
     private var focusIcon: ImageView? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var mapWaypoints = mutableListOf<WaypointItem>()
 
     private lateinit var mavlinkHandler: MavlinkMissionHandler
     private lateinit var btnMissionMenu: ImageButton
@@ -97,12 +105,6 @@ class DJIGCSActivity : AppCompatActivity() {
         drawerLayout = findViewById(R.id.root_view)
         primaryFpvWidget = findViewById(R.id.widget_primary_fpv)
         topBarPanel = findViewById(R.id.panel_top_bar)
-        compassWidget = findViewById(R.id.widget_compass)
-
-        // 🎨 SLEEK UI: Hide bulky background layers to leave only the Heading Arrow and North Indicator
-        compassWidget.findViewById<View>(dji.v5.ux.R.id.imageview_compass_background)?.visibility = View.GONE
-        compassWidget.findViewById<View>(dji.v5.ux.R.id.imageview_inner_circles)?.visibility = View.GONE
-        compassWidget.findViewById<View>(dji.v5.ux.R.id.progressbar_compass_attitude)?.visibility = View.GONE
         
         // 🗺️ TRUEGCS MAP SETUP: Reliable Leaflet-based map with ArcGIS tiles
         mapWebView = findViewById(R.id.map_webview)
@@ -113,7 +115,9 @@ class DJIGCSActivity : AppCompatActivity() {
         mapWebView.settings.setSupportZoom(true)
         mapWebView.settings.builtInZoomControls = true
         mapWebView.settings.displayZoomControls = false
-        mapWebView.webViewClient = WebViewClient()
+        mapWebView.settings.javaScriptEnabled = true
+        mapWebView.settings.domStorageEnabled = true
+        mapWebView.addJavascriptInterface(MapInterface(), "Android")
         mapWebView.loadUrl("file:///android_asset/map.html")
 
         // Subscribe to Aircraft Location
@@ -140,16 +144,6 @@ class DJIGCSActivity : AppCompatActivity() {
         touchOverlay = findViewById(R.id.touch_overlay)
         cameraQuickConfig = findViewById(R.id.widget_camera_config)
         cameraSettingsDrawer = findViewById(R.id.camera_settings_drawer)
-        btnToggleMenu = findViewById(R.id.btn_toggle_camera)
-
-        // Toggle Full Settings Drawer
-        btnToggleMenu.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
-                drawerLayout.closeDrawer(GravityCompat.END)
-            } else {
-                drawerLayout.openDrawer(GravityCompat.END)
-            }
-        }
 
         // --- NEW: MISSION LOGIC ---
         btnMissionMenu = findViewById(R.id.btn_mission_menu)
@@ -161,6 +155,28 @@ class DJIGCSActivity : AppCompatActivity() {
 
         btnMissionMenu.setOnClickListener {
             showMissionMenu()
+        }
+
+        findViewById<View>(R.id.btn_takeoff_land).setOnClickListener {
+            KeyManager.getInstance().performAction(KeyTools.createKey(FlightControllerKey.KeyStartTakeoff), object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+                override fun onSuccess(t: EmptyMsg?) { Log.i("TrueGCS", "Takeoff Success") }
+                override fun onFailure(error: IDJIError) { Log.e("TrueGCS", "Takeoff Failed: ${error.description()}") }
+            })
+        }
+
+        findViewById<View>(R.id.btn_rth).setOnClickListener {
+            KeyManager.getInstance().performAction(KeyTools.createKey(FlightControllerKey.KeyStartGoHome), object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+                override fun onSuccess(t: EmptyMsg?) { Log.i("TrueGCS", "RTH Success") }
+                override fun onFailure(error: IDJIError) { Log.e("TrueGCS", "RTH Failed: ${error.description()}") }
+            })
+        }
+
+        findViewById<View>(R.id.btn_main_menu).setOnClickListener {
+            if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
+                drawerLayout.closeDrawer(GravityCompat.END)
+            } else {
+                drawerLayout.openDrawer(GravityCompat.END)
+            }
         }
         // ---------------------------
 
@@ -175,6 +191,8 @@ class DJIGCSActivity : AppCompatActivity() {
             layoutParams = FrameLayout.LayoutParams(100, 100)
         }
         (findViewById<View>(android.R.id.content) as? android.view.ViewGroup)?.addView(focusIcon)
+
+        setupMobileGPS()
 
         touchOverlay.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_UP) {
@@ -217,7 +235,6 @@ class DJIGCSActivity : AppCompatActivity() {
         // Ensure UI components know which camera to control
         primaryFpvWidget.updateVideoSource(cameraIndex)
         cameraQuickConfig.updateCameraSource(cameraIndex, lens)
-        compassWidget.setGimbalIndex(cameraIndex)
         
         // Direct binding to the controls widget fixes the static sliders and buttons
         findViewById<CameraControlsWidget>(R.id.widget_camera_controls)?.updateCameraSource(cameraIndex, lens)
@@ -262,8 +279,26 @@ class DJIGCSActivity : AppCompatActivity() {
             .setView(dialogView)
             .create()
 
+        dialog.show() // Show first so we can modify window
+
+        // SET CENTER-BOTTOM GRAVITY AND SIZE
+        val window = dialog.window
+        window?.setGravity(Gravity.BOTTOM)
+        val params = window?.attributes
+        params?.width = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.height = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.y = 150 // Distance from bottom
+        window?.attributes = params
+
+        val editAlt = dialogView.findViewById<EditText>(R.id.edit_mission_alt)
+
         dialogView.findViewById<View>(R.id.btn_execute_mission).setOnClickListener {
-            VirtualStickMissionManager.startMission(mavlinkHandler.getMissionItems())
+            val altOverride = editAlt.text.toString().toDoubleOrNull() ?: 30.0
+            
+            // Combine map waypoints and mavlink waypoints (or just use map if present)
+            val finalWps = if (mapWaypoints.isNotEmpty()) mapWaypoints else mavlinkHandler.getMissionItems()
+            
+            VirtualStickMissionManager.startMission(finalWps, altOverride)
             dialog.dismiss()
         }
 
@@ -275,8 +310,45 @@ class DJIGCSActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    inner class MapInterface {
+        @android.webkit.JavascriptInterface
+        fun onWaypointsChanged(json: String) {
+            try {
+                val array = org.json.JSONArray(json)
+                val newList = mutableListOf<WaypointItem>()
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    val lat = obj.getDouble("lat")
+                    val lng = obj.getDouble("lng")
+                    newList.add(WaypointItem(lat, lng, 30.0))
+                }
+                runOnUiThread {
+                    mapWaypoints = newList
+                    Log.i("TrueGCS", "Map waypoints updated: ${mapWaypoints.size}")
+                }
+            } catch (e: Exception) {
+                Log.e("TrueGCS", "Error parsing map waypoints", e)
+            }
+        }
+    }
+
+    private fun setupMobileGPS() {
+        MobileGPSLocationUtil.getInstance().addLocationListener(object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                mapWebView.post {
+                    mapWebView.evaluateJavascript("updateControllerLocation(${location.latitude}, ${location.longitude})", null)
+                }
+            }
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+            override fun onProviderEnabled(provider: String) {}
+            override fun onProviderDisabled(provider: String) {}
+        })
+        MobileGPSLocationUtil.getInstance().startUpdateLocation()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        MobileGPSLocationUtil.getInstance().clearAllLocationListener()
         KeyManager.getInstance().cancelListen(this)
         MediaDataCenter.getInstance().cameraStreamManager.removeAvailableCameraUpdatedListener(availableCameraUpdatedListener)
         handler.removeCallbacksAndMessages(null)

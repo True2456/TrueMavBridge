@@ -57,36 +57,120 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- Left Command Sidebar -->
+        <!-- Bottom Command Toolbar (Centered Tactical Strip) -->
         <LinearLayout
-            android:id="@+id/left_sidebar"
-            android:layout_width="60dp"
-            android:layout_height="match_parent"
-            android:layout_marginTop="50dp"
-            android:background="@color/truegcs_dark_transparent"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:paddingTop="20dp"
+            android:id="@+id/bottom_toolbar"
+            android:layout_width="wrap_content"
+            android:layout_height="65dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/panel_tactical_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:elevation="10dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
 
-            <ImageButton
-                android:id="@+id/btn_mission_menu"
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:background="@drawable/truegcs_btn_bg"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/uxsdk_fpv_hsi_waypoint"
-                app:tint="@color/truegcs_cyan" />
-
-            <TextView
+            <!-- Mission Button -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="MISSION"
-                android:textColor="@color/truegcs_cyan"
-                android:textSize="10sp" />
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="12dp">
+                <ImageButton
+                    android:id="@+id/btn_mission_menu"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/truegcs_btn_bg"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/uxsdk_fpv_hsi_waypoint"
+                    app:tint="@color/truegcs_cyan" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MISSION"
+                    android:textColor="@color/truegcs_cyan"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Takeoff / Land Button -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="12dp">
+                <ImageButton
+                    android:id="@+id/btn_takeoff_land"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/truegcs_btn_bg"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/uxsdk_ic_takeoff"
+                    app:tint="@color/truegcs_cyan" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TAKEOFF"
+                    android:textColor="@color/truegcs_cyan"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- RTH Button -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="12dp">
+                <ImageButton
+                    android:id="@+id/btn_rth"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/truegcs_btn_bg"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/uxsdk_ic_return_home"
+                    app:tint="@color/truegcs_cyan" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RTH"
+                    android:textColor="@color/truegcs_cyan"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Menu Button -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageButton
+                    android:id="@+id/btn_main_menu"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/truegcs_btn_bg"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/uxsdk_ic_settings_white_24dp"
+                    app:tint="@color/truegcs_cyan" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MENU"
+                    android:textColor="@color/truegcs_cyan"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Top Status Bar Panel -->
@@ -175,44 +259,6 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- Minimalist Compass Arrow -->
-        <FrameLayout
-            android:id="@+id/compass_container"
-            android:layout_width="140dp"
-            android:layout_height="140dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginBottom="16dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
-
-            <dji.v5.ux.core.widget.compass.CompassWidget
-                android:id="@+id/widget_compass"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </FrameLayout>
-
-        <!-- Flight Action Controls -->
-        <LinearLayout
-            android:id="@+id/flight_controls"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="24dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
-
-            <dji.v5.ux.flight.takeoff.TakeOffWidget
-                android:id="@+id/widget_takeoff"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:layout_marginEnd="32dp" />
-
-            <dji.v5.ux.flight.returnhome.ReturnHomeWidget
-                android:id="@+id/widget_rth"
-                android:layout_width="50dp"
-                android:layout_height="50dp" />
-        </LinearLayout>
 
         <!-- Right Side Main Camera Controls -->
         <dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
@@ -223,19 +269,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-
-        <!-- Toggle Button for Deep Settings -->
-        <Button
-            android:id="@+id/btn_toggle_camera"
-            android:layout_width="80dp"
-            android:layout_height="40dp"
-            android:layout_marginTop="16dp"
-            android:background="@color/truegcs_cyan"
-            android:text="MENU"
-            android:textColor="@color/truegcs_bg"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="@+id/widget_camera_controls"
-            app:layout_constraintTop_toBottomOf="@+id/widget_camera_controls" />
 
         <!-- System Message Overlay -->
         <dji.v5.ux.core.widget.systemstatus.SystemStatusWidget

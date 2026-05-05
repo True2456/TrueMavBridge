@@ -1,47 +1,59 @@
-<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="300dp"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:background="@color/truegcs_dark_secondary">
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="@drawable/panel_tactical_bg"
+    android:gravity="center_vertical"
+    android:elevation="12dp">
 
-    <TextView
-        android:layout_width="match_parent"
+    <!-- Altitude Input -->
+    <LinearLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="MISSION CONTROL"
-        android:textColor="@color/truegcs_cyan"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:layout_marginBottom="16dp"
-        android:gravity="center" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginEnd="16dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ALT (m)"
+            android:textColor="@color/white"
+            android:textSize="9sp" />
+        <EditText
+            android:id="@+id/edit_mission_alt"
+            android:layout_width="60dp"
+            android:layout_height="35dp"
+            android:background="@drawable/truegcs_btn_bg"
+            android:textColor="@color/truegcs_cyan"
+            android:gravity="center"
+            android:inputType="numberDecimal"
+            android:text="30.0"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-    <TextView
-        android:id="@+id/txt_mission_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Status: Ready"
-        android:textColor="@color/white"
-        android:layout_marginBottom="16dp"
-        android:gravity="center" />
-
+    <!-- Initiate Button -->
     <Button
         android:id="@+id/btn_execute_mission"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="EXECUTE MISSION"
+        android:layout_width="120dp"
+        android:layout_height="45dp"
+        android:text="INITIATE"
         android:backgroundTint="@color/truegcs_cyan"
         android:textColor="@color/truegcs_bg"
-        android:layout_marginBottom="12dp"
+        android:layout_marginEnd="12dp"
+        android:textSize="12sp"
         android:textStyle="bold" />
 
+    <!-- Terminate Button -->
     <Button
         android:id="@+id/btn_abort_mission"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="ABORT MISSION"
+        android:layout_width="100dp"
+        android:layout_height="40dp"
+        android:text="ABORT"
         android:backgroundTint="@color/red_light"
         android:textColor="@color/white"
+        android:textSize="12sp"
         android:textStyle="bold" />
 
 </LinearLayout>

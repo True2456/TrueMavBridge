@@ -47,7 +47,19 @@
         });
 
         var marker = L.marker([0, 0], { icon: droneIcon, opacity: 0 }).addTo(map);
+        
+        var controllerIcon = L.divIcon({
+            className: 'controller-icon',
+            html: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" fill="#0ff" stroke="#000" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#FFF"/></svg>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+        var controllerMarker = L.marker([0, 0], { icon: controllerIcon, opacity: 0 }).addTo(map);
+
         var isFirstLocation = true;
+        var waypoints = [];
+        var waypointLayer = L.layerGroup().addTo(map);
+        var pathLine = L.polyline([], { color: '#0ff', weight: 3, dashArray: '5, 10' }).addTo(map);
 
         function updateLocation(lat, lng, heading) {
             // Ignore 0,0 (often a sign of no GPS fix)
@@ -70,6 +82,76 @@
             } else {
                 // Smooth follow
                 map.panTo(newLatLng);
+            }
+        }
+
+        function updateControllerLocation(lat, lng) {
+            if (lat === 0 && lng === 0) return;
+            controllerMarker.setOpacity(1);
+            controllerMarker.setLatLng([lat, lng]);
+        }
+
+        // --- WAYPOINT LOGIC ---
+        map.on('contextmenu', function(e) {
+            addWaypoint(e.latlng.lat, e.latlng.lng);
+        });
+
+        function addWaypoint(lat, lng) {
+            var index = waypoints.length + 1;
+            var wpIcon = L.divIcon({
+                className: 'wp-icon',
+                html: '<div style="background:#0ff; color:#000; width:24px; height:24px; border-radius:50%; border:2px solid #000; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">' + index + '</div>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            var wpMarker = L.marker([lat, lng], {
+                icon: wpIcon,
+                draggable: true
+            }).addTo(waypointLayer);
+
+            var wp = { lat: lat, lng: lng, marker: wpMarker };
+            waypoints.push(wp);
+
+            wpMarker.on('click', function() {
+                removeWaypoint(wp);
+            });
+
+            wpMarker.on('dragend', function(e) {
+                var pos = wpMarker.getLatLng();
+                wp.lat = pos.lat;
+                wp.lng = pos.lng;
+                syncWaypoints();
+            });
+
+            syncWaypoints();
+        }
+
+        function removeWaypoint(wp) {
+            waypointLayer.removeLayer(wp.marker);
+            waypoints = waypoints.filter(w => w !== wp);
+            
+            // Renumber remaining waypoints
+            waypoints.forEach((w, i) => {
+                var idx = i + 1;
+                w.marker.setIcon(L.divIcon({
+                    className: 'wp-icon',
+                    html: '<div style="background:#0ff; color:#000; width:24px; height:24px; border-radius:50%; border:2px solid #000; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">' + idx + '</div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                }));
+            });
+
+            syncWaypoints();
+        }
+
+        function syncWaypoints() {
+            var latlngs = waypoints.map(w => [w.lat, w.lng]);
+            pathLine.setLatLngs(latlngs);
+
+            if (window.Android) {
+                var data = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
+                window.Android.onWaypointsChanged(JSON.stringify(data));
             }
         }
     </script>

@@ -132,11 +132,21 @@ object VirtualStickMissionManager {
         }
     }
 
-    fun startMission(waypoints: List<WaypointItem>) {
-        if (waypoints.isEmpty()) return
+    fun startMission(waypoints: List<WaypointItem>, altOverride: Double? = null) {
+        if (waypoints.isEmpty()) {
+            LogUtils.e(TAG, "No waypoints to execute.")
+            return
+        }
         
+        // Apply altitude override if provided
+        val finalWaypoints = if (altOverride != null) {
+            waypoints.map { it.copy(altitude = altOverride) }
+        } else {
+            waypoints
+        }
+
         missionQueue.clear()
-        missionQueue.addAll(waypoints)
+        missionQueue.addAll(finalWaypoints)
         isHolding = false
         
         LogUtils.i(TAG, "Starting Virtual Stick Mission with ${waypoints.size} waypoints.")
