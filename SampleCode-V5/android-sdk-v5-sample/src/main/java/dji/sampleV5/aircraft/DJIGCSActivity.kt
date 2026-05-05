@@ -1,5 +1,6 @@
 package dji.sampleV5.aircraft
 
+import android.os.Build
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -12,6 +13,8 @@ import android.view.WindowManager
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
+import android.widget.SeekBar
 import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.ImageButton
@@ -25,6 +28,10 @@ import dji.sdk.keyvalue.key.CameraKey
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.value.camera.CameraMeteringMode
+import dji.sdk.keyvalue.value.camera.CameraISO
+import dji.sdk.keyvalue.value.camera.CameraShutterSpeed
+import dji.sdk.keyvalue.value.camera.CameraExposureCompensation
+import dji.sdk.keyvalue.value.camera.CameraFocusMode
 import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.common.LocationCoordinate2D
 import dji.sdk.keyvalue.value.common.ComponentIndexType
@@ -80,6 +87,7 @@ class DJIGCSActivity : AppCompatActivity() {
 
     private lateinit var mavlinkHandler: MavlinkMissionHandler
     private lateinit var btnMissionMenu: ImageButton
+    private lateinit var btnCameraMenu: ImageButton
 
     private val availableCameraUpdatedListener: ICameraStreamManager.AvailableCameraUpdatedListener = object : ICameraStreamManager.AvailableCameraUpdatedListener {
         override fun onAvailableCameraUpdated(availableCameraList: List<ComponentIndexType>) {
@@ -192,27 +200,9 @@ class DJIGCSActivity : AppCompatActivity() {
         }
         (findViewById<View>(android.R.id.content) as? android.view.ViewGroup)?.addView(focusIcon)
 
-        setupMobileGPS()
-
-        touchOverlay.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_UP) {
-                val xNorm = event.x / touchOverlay.width.toDouble()
-                val yNorm = event.y / touchOverlay.height.toDouble()
-                
-                CameraKey.KeyCameraFocusTarget.create(cameraIndex).set(DoublePoint2D(xNorm, yNorm))
-
-                focusIcon?.apply {
-                    translationX = event.rawX - 50f
-                    translationY = event.rawY - 50f
-                    visibility = View.VISIBLE
-                }
-
-                handler.removeCallbacksAndMessages("HIDE_ICON")
-                handler.postAtTime({
-                    focusIcon?.visibility = View.GONE
-                }, "HIDE_ICON", SystemClock.uptimeMillis() + 2000)
-            }
-            true
+        btnCameraMenu = findViewById(R.id.btn_camera_menu)
+        btnCameraMenu.setOnClickListener {
+            showCameraMenu()
         }
 
         // Immersive/Full Screen
@@ -227,6 +217,192 @@ class DJIGCSActivity : AppCompatActivity() {
 
         // Monitor camera connection
         MediaDataCenter.getInstance().cameraStreamManager.addAvailableCameraUpdatedListener(availableCameraUpdatedListener)
+
+        setupMobileGPS()
+    }
+
+    private fun showCameraMenu() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_camera_menu, null)
+        val dialog = AlertDialog.Builder(this, R.style.TransparentDialog)
+            .setView(dialogView)
+            .create()
+
+        dialog.show()
+
+        val window = dialog.window
+        window?.setGravity(Gravity.BOTTOM)
+        val params = window?.attributes
+        params?.width = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.height = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.y = (100 * resources.displayMetrics.density).toInt() // Increased offset
+        window?.attributes = params
+
+        val cameraIndex = ComponentIndexType.LEFT_OR_MAIN
+
+        // TRIGGER AUTO FOCUS (Center)
+        dialogView.findViewById<View>(R.id.btn_trigger_af).setOnClickListener {
+            CameraKey.KeyCameraFocusTarget.create(cameraIndex).set(DoublePoint2D(0.5, 0.5))
+            
+            focusIcon?.apply {
+                translationX = (touchOverlay.width / 2 - 50).toFloat()
+                translationY = (touchOverlay.height / 2 - 50).toFloat()
+                visibility = View.VISIBLE
+            }
+            handler.removeCallbacksAndMessages("HIDE_ICON")
+            handler.postDelayed({ focusIcon?.visibility = View.GONE }, 2000)
+        }
+
+        val lens = CameraLensType.CAMERA_LENS_WIDE
+
+        // TOGGLE AF/MF
+        dialogView.findViewById<View>(R.id.btn_toggle_af_mf).setOnClickListener {
+            val key = KeyTools.createCameraKey(CameraKey.KeyCameraFocusMode, cameraIndex, lens)
+            KeyManager.getInstance().getValue(key, object: CommonCallbacks.CompletionCallbackWithParam<dji.sdk.keyvalue.value.camera.CameraFocusMode> {
+                override fun onSuccess(mode: dji.sdk.keyvalue.value.camera.CameraFocusMode?) {
+                    val nextMode = if (mode == dji.sdk.keyvalue.value.camera.CameraFocusMode.MANUAL) 
+                        dji.sdk.keyvalue.value.camera.CameraFocusMode.AF 
+                    else 
+                        dji.sdk.keyvalue.value.camera.CameraFocusMode.MANUAL
+                    
+                    KeyManager.getInstance().setValue(key, nextMode, null)
+                }
+                override fun onFailure(error: IDJIError) {}
+            })
+        }
+
+        // TOGGLE AE LOCK
+        dialogView.findViewById<View>(R.id.btn_ae_lock).setOnClickListener {
+            val key = KeyTools.createCameraKey(CameraKey.KeyAELockEnabled, cameraIndex, lens)
+            KeyManager.getInstance().getValue(key, object: CommonCallbacks.CompletionCallbackWithParam<Boolean> {
+                override fun onSuccess(locked: Boolean?) {
+                    KeyManager.getInstance().setValue(key, !(locked ?: false), null)
+                }
+                override fun onFailure(error: IDJIError) {}
+            })
+        }
+
+        setupSliders(dialogView, cameraIndex, lens)
+    }
+
+    private fun setupSliders(view: View, cameraIndex: ComponentIndexType, lens: CameraLensType) {
+        val seekIso: SeekBar = view.findViewById(R.id.seek_iso)
+        val txtIso: TextView = view.findViewById(R.id.txt_iso_val)
+        val seekShutter: SeekBar = view.findViewById(R.id.seek_shutter)
+        val txtShutter: TextView = view.findViewById(R.id.txt_shutter_val)
+        val seekEv: SeekBar = view.findViewById(R.id.seek_ev)
+        val txtEv: TextView = view.findViewById(R.id.txt_ev_val)
+        val seekFocus: SeekBar = view.findViewById(R.id.seek_focus)
+        val txtFocus: TextView = view.findViewById(R.id.txt_focus_val)
+
+        // ISO
+        val isoKey = KeyTools.createCameraKey(CameraKey.KeyISO, cameraIndex, lens)
+        val isoRangeKey = KeyTools.createCameraKey(CameraKey.KeyISORange, cameraIndex, lens)
+        var isoList = listOf<CameraISO>()
+
+        KeyManager.getInstance().listen(isoRangeKey, this) { _, range ->
+            isoList = range ?: listOf()
+            seekIso.max = (isoList.size - 1).coerceAtLeast(0)
+        }
+        KeyManager.getInstance().listen(isoKey, this) { _, value ->
+            val idx = isoList.indexOf(value)
+            if (idx >= 0) {
+                seekIso.progress = idx
+                txtIso.text = value?.name ?: "AUTO"
+            }
+        }
+        seekIso.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                if (f && p < isoList.size) {
+                    KeyManager.getInstance().setValue(isoKey, isoList[p], null)
+                }
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+
+        // SHUTTER
+        val shutterKey = KeyTools.createCameraKey(CameraKey.KeyShutterSpeed, cameraIndex, lens)
+        val shutterRangeKey = KeyTools.createCameraKey(CameraKey.KeyShutterSpeedRange, cameraIndex, lens)
+        var shutterList = listOf<CameraShutterSpeed>()
+
+        KeyManager.getInstance().listen(shutterRangeKey, this) { _, range ->
+            shutterList = range ?: listOf()
+            seekShutter.max = (shutterList.size - 1).coerceAtLeast(0)
+        }
+        KeyManager.getInstance().listen(shutterKey, this) { _, value ->
+            val idx = shutterList.indexOf(value)
+            if (idx >= 0) {
+                seekShutter.progress = idx
+                txtShutter.text = value?.name ?: "1/50"
+            }
+        }
+        seekShutter.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                if (f && p < shutterList.size) {
+                    KeyManager.getInstance().setValue(shutterKey, shutterList[p], null)
+                }
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+
+        // EV
+        val evKey = KeyTools.createCameraKey(CameraKey.KeyExposureCompensation, cameraIndex, lens)
+        val evRangeKey = KeyTools.createCameraKey(CameraKey.KeyExposureCompensationRange, cameraIndex, lens)
+        var evList = listOf<CameraExposureCompensation>()
+
+        KeyManager.getInstance().listen(evRangeKey, this) { _, range: List<CameraExposureCompensation>? ->
+            evList = range ?: listOf()
+            seekEv.max = (evList.size - 1).coerceAtLeast(0)
+        }
+        KeyManager.getInstance().listen(evKey, this) { _, value: CameraExposureCompensation? ->
+            val idx = evList.indexOf(value)
+            if (idx >= 0) {
+                seekEv.progress = idx
+                (txtEv as? TextView)?.setText(value?.name?.replace("_", ".")?.replace("P", "+")?.replace("N", "-") ?: "0.0")
+            }
+        }
+        seekEv.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                if (f && p < evList.size) {
+                    KeyManager.getInstance().setValue(evKey, evList[p], null)
+                }
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+
+        // FOCUS
+        val focusKey = KeyTools.createCameraKey(CameraKey.KeyCameraFocusRingValue, cameraIndex, lens)
+        val focusMinKey = KeyTools.createCameraKey(CameraKey.KeyCameraFocusRingMinValue, cameraIndex, lens)
+        val focusMaxKey = KeyTools.createCameraKey(CameraKey.KeyCameraFocusRingMaxValue, cameraIndex, lens)
+
+        KeyManager.getInstance().listen(focusMinKey, this) { _, value: Int? ->
+            if (value != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                seekFocus.min = value
+            }
+        }
+        KeyManager.getInstance().listen(focusMaxKey, this) { _, value: Int? ->
+            if (value != null) {
+                seekFocus.max = value
+            }
+        }
+        val finalTxtFocus = txtFocus
+        KeyManager.getInstance().listen(focusKey, this) { _, value: Int? ->
+            if (value != null) {
+                seekFocus.progress = value
+                (finalTxtFocus as? TextView)?.setText(value.toString())
+            }
+        }
+        seekFocus.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                if (f) {
+                    KeyManager.getInstance().setValue(focusKey, p, null)
+                }
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
     }
 
     private fun bindCameraToWidgets(cameraIndex: ComponentIndexType) {
@@ -287,7 +463,7 @@ class DJIGCSActivity : AppCompatActivity() {
         val params = window?.attributes
         params?.width = WindowManager.LayoutParams.WRAP_CONTENT
         params?.height = WindowManager.LayoutParams.WRAP_CONTENT
-        params?.y = 150 // Distance from bottom
+        params?.y = (100 * resources.displayMetrics.density).toInt() // Distance from bottom
         window?.attributes = params
 
         val editAlt = dialogView.findViewById<EditText>(R.id.edit_mission_alt)

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="320dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/panel_tactical_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Top Buttons Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btn_trigger_af"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/truegcs_btn_bg"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/uxsdk_ic_focus_target_auto"
+                android:tint="@color/truegcs_cyan" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUTO FOCUS"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="7sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btn_toggle_af_mf"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/truegcs_btn_bg"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/uxsdk_ic_focus_target_auto"
+                android:tint="@color/truegcs_cyan" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AF / MF"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="7sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btn_ae_lock"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/truegcs_btn_bg"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/uxsdk_ic_auto_exposure_lock"
+                android:tint="@color/truegcs_cyan" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AE LOCK"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="7sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ISO Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="ISO"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/txt_iso_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUTO"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp" />
+        </LinearLayout>
+        <SeekBar
+            android:id="@+id/seek_iso"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/truegcs_cyan"
+            android:thumbTint="@color/truegcs_cyan" />
+    </LinearLayout>
+
+    <!-- SHUTTER Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SHUTTER"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/txt_shutter_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1/50"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp" />
+        </LinearLayout>
+        <SeekBar
+            android:id="@+id/seek_shutter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/truegcs_cyan"
+            android:thumbTint="@color/truegcs_cyan" />
+    </LinearLayout>
+
+    <!-- EV Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="EV"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/txt_ev_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.0"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp" />
+        </LinearLayout>
+        <SeekBar
+            android:id="@+id/seek_ev"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/truegcs_cyan"
+            android:thumbTint="@color/truegcs_cyan" />
+    </LinearLayout>
+
+    <!-- MANUAL FOCUS Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="FOCUS"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/txt_focus_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUTO"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp" />
+        </LinearLayout>
+        <SeekBar
+            android:id="@+id/seek_focus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/truegcs_cyan"
+            android:thumbTint="@color/truegcs_cyan" />
+    </LinearLayout>
+
+</LinearLayout>
