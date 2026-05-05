@@ -13,6 +13,8 @@ import dji.v5.manager.KeyManager
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.utils.common.LogUtils
 import dji.sdk.keyvalue.value.common.EmptyMsg
+import dji.sdk.keyvalue.key.CameraKey
+import dji.sdk.keyvalue.value.common.ComponentIndexType
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
 
@@ -44,6 +46,7 @@ object VirtualStickMissionManager {
     private var isHolding = false
     
     var onWaypointReached: (() -> Unit)? = null
+    private var isMappingMission = false
 
     private val navigationLoop = object : Runnable {
         override fun run() {
@@ -72,6 +75,11 @@ object VirtualStickMissionManager {
                 if (!isHolding || (System.currentTimeMillis() - holdStartTime >= target.holdTimeMs)) {
                     LogUtils.i(TAG, "Waypoint reached. Removing from queue.")
                     isHolding = false
+                    
+                    if (isMappingMission) {
+                        triggerPhoto()
+                    }
+                    
                     missionQueue.removeAt(0)
                     onWaypointReached?.invoke()
                     // Immediately loop to evaluate the next waypoint
@@ -132,7 +140,8 @@ object VirtualStickMissionManager {
         }
     }
 
-    fun startMission(waypoints: List<WaypointItem>, altOverride: Double? = null) {
+    fun startMission(waypoints: List<WaypointItem>, altOverride: Double? = null, isMapping: Boolean = false) {
+        this.isMappingMission = isMapping
         if (waypoints.isEmpty()) {
             LogUtils.e(TAG, "No waypoints to execute.")
             return
@@ -254,5 +263,17 @@ object VirtualStickMissionManager {
         val x = cos(phi1) * sin(phi2) - sin(phi1) * cos(phi2) * cos(deltaLambda)
         var theta = atan2(y, x)
         return (Math.toDegrees(theta) + 360) % 360
+    }
+
+    private fun triggerPhoto() {
+        LogUtils.i(TAG, "Triggering Photo at waypoint...")
+        KeyManager.getInstance().performAction(KeyTools.createKey(CameraKey.KeyStartShootPhoto, ComponentIndexType.LEFT_OR_MAIN), object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+            override fun onSuccess(t: EmptyMsg?) {
+                LogUtils.i(TAG, "Photo captured successfully.")
+            }
+            override fun onFailure(error: IDJIError) {
+                LogUtils.e(TAG, "Photo capture failed: ${error.description()}")
+            }
+        })
     }
 }

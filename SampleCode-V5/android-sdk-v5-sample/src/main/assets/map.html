@@ -30,10 +30,9 @@
         var map = L.map('map', {
             zoomControl: false,
             attributionControl: false,
-            tap: false // Disable tap delay for mobile
+            tap: false
         }).setView([0, 0], 2);
 
-        // ArcGIS World Imagery (Satellite)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
             minZoom: 2
@@ -57,30 +56,37 @@
         var controllerMarker = L.marker([0, 0], { icon: controllerIcon, opacity: 0 }).addTo(map);
 
         var isFirstLocation = true;
+        var isDrawMode = false;
         var waypoints = [];
         var waypointLayer = L.layerGroup().addTo(map);
         var pathLine = L.polyline([], { color: '#0ff', weight: 3, dashArray: '5, 10' }).addTo(map);
+        var polygonArea = L.polygon([], { color: '#0ff', weight: 1, fillOpacity: 0.2 }).addTo(map);
+
+        function setDrawMode(enabled) {
+            isDrawMode = enabled;
+            syncWaypoints();
+        }
+
+        function clearAll() {
+            waypoints = [];
+            waypointLayer.clearLayers();
+            pathLine.setLatLngs([]);
+            polygonArea.setLatLngs([]);
+            syncWaypoints();
+        }
 
         function updateLocation(lat, lng, heading) {
-            // Ignore 0,0 (often a sign of no GPS fix)
             if (lat === 0 && lng === 0) return;
-
             document.getElementById('status-msg').style.display = 'none';
             marker.setOpacity(1);
-
             var newLatLng = new L.LatLng(lat, lng);
             marker.setLatLng(newLatLng);
-            
             var iconElement = document.querySelector('.drone-icon svg');
-            if (iconElement) {
-                iconElement.style.transform = 'rotate(' + heading + 'deg)';
-            }
-
+            if (iconElement) iconElement.style.transform = 'rotate(' + heading + 'deg)';
             if (isFirstLocation) {
                 map.setView(newLatLng, 18);
                 isFirstLocation = false;
             } else {
-                // Smooth follow
                 map.panTo(newLatLng);
             }
         }
@@ -91,10 +97,12 @@
             controllerMarker.setLatLng([lat, lng]);
         }
 
-        // --- WAYPOINT LOGIC ---
         map.on('contextmenu', function(e) {
             addWaypoint(e.latlng.lat, e.latlng.lng);
         });
+
+        // Optional: prevent default context menu
+        window.oncontextmenu = function() { return false; }
 
         function addWaypoint(lat, lng) {
             var index = waypoints.length + 1;
@@ -113,7 +121,8 @@
             var wp = { lat: lat, lng: lng, marker: wpMarker };
             waypoints.push(wp);
 
-            wpMarker.on('click', function() {
+            wpMarker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
                 removeWaypoint(wp);
             });
 
@@ -127,11 +136,15 @@
             syncWaypoints();
         }
 
+        function removeFirstWaypoint() {
+            if (waypoints.length > 0) {
+                removeWaypoint(waypoints[0]);
+            }
+        }
+
         function removeWaypoint(wp) {
             waypointLayer.removeLayer(wp.marker);
             waypoints = waypoints.filter(w => w !== wp);
-            
-            // Renumber remaining waypoints
             waypoints.forEach((w, i) => {
                 var idx = i + 1;
                 w.marker.setIcon(L.divIcon({
@@ -141,17 +154,46 @@
                     iconAnchor: [12, 12]
                 }));
             });
-
             syncWaypoints();
         }
 
         function syncWaypoints() {
             var latlngs = waypoints.map(w => [w.lat, w.lng]);
             pathLine.setLatLngs(latlngs);
+            
+            if (isDrawMode) {
+                polygonArea.setLatLngs(latlngs);
+            } else {
+                polygonArea.setLatLngs([]);
+            }
 
             if (window.Android) {
                 var data = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
                 window.Android.onWaypointsChanged(JSON.stringify(data));
+            }
+        }
+
+        // Called from Android
+        function setGridPoints(json) {
+            var points = JSON.parse(json);
+            clearAll();
+            points.forEach(p => {
+                var dotIcon = L.divIcon({
+                    className: 'dot-icon',
+                    html: '<div style="background:#FFF; width:6px; height:6px; border-radius:50%; border:1px solid #000;"></div>',
+                    iconSize: [6, 6],
+                    iconAnchor: [3, 3]
+                });
+                L.marker([p.lat, p.lng], { icon: dotIcon }).addTo(waypointLayer);
+            });
+            
+            // Draw the grid line
+            var gridLine = L.polyline(points.map(p => [p.lat, p.lng]), { color: '#FFF', weight: 2 }).addTo(waypointLayer);
+            
+            // Zoom to fit
+            if (points.length > 0) {
+                var bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
+                map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
     </script>

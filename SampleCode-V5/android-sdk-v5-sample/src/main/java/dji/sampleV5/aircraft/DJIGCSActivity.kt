@@ -26,6 +26,8 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import dji.sdk.keyvalue.key.CameraKey
 import dji.sdk.keyvalue.key.FlightControllerKey
+import dji.sdk.keyvalue.key.GimbalKey
+import dji.sdk.keyvalue.key.ProductKey
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.value.camera.CameraMeteringMode
 import dji.sdk.keyvalue.value.camera.CameraISO
@@ -36,12 +38,14 @@ import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.common.LocationCoordinate2D
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import dji.sdk.keyvalue.value.common.DoublePoint2D
+import dji.sdk.keyvalue.value.common.EmptyMsg
+import dji.sdk.keyvalue.value.product.ProductType
+import dji.v5.ux.core.util.WaypointItem
 import dji.v5.manager.KeyManager
 import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
-import dji.sdk.keyvalue.value.common.EmptyMsg
 import dji.v5.ux.core.panel.topbar.TopBarPanelWidget
 import dji.v5.ux.core.widget.fpv.FPVWidget
 import dji.v5.ux.core.widget.setting.SettingPanelWidget
@@ -55,7 +59,6 @@ import androidx.appcompat.app.AlertDialog
 import dji.v5.ux.core.util.StreamingManager
 import dji.v5.ux.core.util.MavlinkMissionHandler
 import dji.v5.ux.core.util.VirtualStickMissionManager
-import dji.v5.ux.core.util.WaypointItem
 import dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
 import dji.v5.et.create
 import dji.v5.et.set
@@ -84,10 +87,13 @@ class DJIGCSActivity : AppCompatActivity() {
     private var focusIcon: ImageView? = null
     private val handler = Handler(Looper.getMainLooper())
     private var mapWaypoints = mutableListOf<WaypointItem>()
+    private var surveyAreaPoints = mutableListOf<WaypointItem>()
+    private var isMappingGridActive = false
 
     private lateinit var mavlinkHandler: MavlinkMissionHandler
     private lateinit var btnMissionMenu: ImageButton
     private lateinit var btnCameraMenu: ImageButton
+    private var isDrawingModeEnabled = false
 
     private val availableCameraUpdatedListener: ICameraStreamManager.AvailableCameraUpdatedListener = object : ICameraStreamManager.AvailableCameraUpdatedListener {
         override fun onAvailableCameraUpdated(availableCameraList: List<ComponentIndexType>) {
@@ -161,11 +167,24 @@ class DJIGCSActivity : AppCompatActivity() {
             StreamingManager.sendMavlinkPacket(msgId, payload)
         }
 
-        btnMissionMenu.setOnClickListener {
-            showMissionMenu()
+        findViewById<View>(R.id.btn_camera_menu).setOnClickListener {
+            showCameraMenu()
         }
 
-        findViewById<View>(R.id.btn_takeoff_land).setOnClickListener {
+        findViewById<View>(R.id.btn_mapping_menu).setOnClickListener {
+            showMappingMenu()
+        }
+
+        VirtualStickMissionManager.onWaypointReached = {
+            runOnUiThread {
+                if (mapWaypoints.isNotEmpty()) {
+                    mapWaypoints.removeAt(0)
+                    mapWebView.evaluateJavascript("removeFirstWaypoint()", null)
+                }
+            }
+        }
+
+        findViewById<View>(R.id.btn_mission_menu).setOnClickListener {
             KeyManager.getInstance().performAction(KeyTools.createKey(FlightControllerKey.KeyStartTakeoff), object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
                 override fun onSuccess(t: EmptyMsg?) { Log.i("TrueGCS", "Takeoff Success") }
                 override fun onFailure(error: IDJIError) { Log.e("TrueGCS", "Takeoff Failed: ${error.description()}") }
@@ -219,6 +238,193 @@ class DJIGCSActivity : AppCompatActivity() {
         MediaDataCenter.getInstance().cameraStreamManager.addAvailableCameraUpdatedListener(availableCameraUpdatedListener)
 
         setupMobileGPS()
+    }
+
+    private fun showMappingMenu() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_mapping_menu, null)
+        val dialog = AlertDialog.Builder(this, R.style.TransparentDialog)
+            .setView(dialogView)
+            .create()
+
+        dialog.show()
+
+        val window = dialog.window
+        window?.setGravity(Gravity.BOTTOM)
+        val params = window?.attributes
+        params?.width = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.height = WindowManager.LayoutParams.WRAP_CONTENT
+        params?.y = (100 * resources.displayMetrics.density).toInt()
+        window?.attributes = params
+
+        val editAlt = dialogView.findViewById<EditText>(R.id.edit_mapping_alt)
+        val editSpeed = dialogView.findViewById<EditText>(R.id.edit_mapping_speed)
+        val txtInfo = dialogView.findViewById<TextView>(R.id.txt_mapping_info)
+        val toggleDraw = dialogView.findViewById<android.widget.ToggleButton>(R.id.toggle_draw_area)
+        val btnClear = dialogView.findViewById<View>(R.id.btn_clear_map)
+
+        toggleDraw.isChecked = isDrawingModeEnabled
+        toggleDraw.setOnCheckedChangeListener { _, isChecked ->
+            isDrawingModeEnabled = isChecked
+            mapWebView.evaluateJavascript("setDrawMode($isChecked)", null)
+        }
+
+        btnClear.setOnClickListener {
+            mapWebView.evaluateJavascript("clearAll()", null)
+            mapWaypoints.clear()
+            surveyAreaPoints.clear()
+            isMappingGridActive = false
+        }
+
+        // Detect Product Type to adjust multipliers (default to Mini 3 values)
+        var forwardMult = 0.32
+        var laneMult = 0.42
+        
+        KeyManager.getInstance().getValue(KeyTools.createKey(ProductKey.KeyProductType), object: CommonCallbacks.CompletionCallbackWithParam<ProductType> {
+            override fun onSuccess(type: ProductType?) {
+                if (type == ProductType.DJI_MINI_3 || type == ProductType.DJI_MINI_3_PRO) {
+                    forwardMult = 0.32
+                    laneMult = 0.42
+                }
+                // Update info text based on initial altitude
+                updateMappingInfo(txtInfo, editAlt.text.toString().toDoubleOrNull() ?: 50.0, forwardMult, laneMult)
+            }
+            override fun onFailure(error: IDJIError) {}
+        })
+
+        // Prep Gimbal to -90
+        dialogView.findViewById<View>(R.id.btn_prep_gimbal).setOnClickListener {
+            // In V5, we use KeyRotateByAngle with a GimbalAngleRotation object
+            // However, since we can't easily find the RotationMode enum in this environment,
+            // we'll try a simpler approach if available or just set the pitch property.
+            try {
+                val rotation = dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation()
+                rotation.pitch = -90.0
+                // Most V5 gimbals default to absolute angle if mode is not set or 0
+                
+                KeyManager.getInstance().performAction(KeyTools.createKey(GimbalKey.KeyRotateByAngle, ComponentIndexType.LEFT_OR_MAIN), rotation, object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+                    override fun onSuccess(msg: EmptyMsg?) {
+                        Log.i("TrueGCS", "Gimbal prepped to -90")
+                    }
+                    override fun onFailure(error: IDJIError) {
+                        Log.e("TrueGCS", "Gimbal prep failed: ${error.description()}")
+                    }
+                })
+            } catch (e: Exception) {
+                Log.e("TrueGCS", "Error preparing gimbal: ${e.message}")
+            }
+        }
+
+        dialogView.findViewById<View>(R.id.btn_generate_grid).setOnClickListener {
+            if (surveyAreaPoints.size < 3) {
+                Log.e("TrueGCS", "Need at least 3 points to define an area")
+                return@setOnClickListener
+            }
+
+            val alt = editAlt.text.toString().toDoubleOrNull() ?: 50.0
+            val speed = editSpeed.text.toString().toDoubleOrNull() ?: 5.0
+            
+            val forwardSpacing = forwardMult * alt
+            val laneSpacing = laneMult * alt
+
+            generateGrid(forwardSpacing, laneSpacing, alt, speed)
+            dialog.dismiss()
+        }
+    }
+
+    private fun updateMappingInfo(view: TextView, alt: Double, forwardMult: Double, laneMult: Double) {
+        val fs = forwardMult * alt
+        val ls = laneMult * alt
+        view.text = String.format("Forward Spacing: %.1fm\nLane Spacing: %.1fm\nOverlap: 70%%", fs, ls)
+    }
+
+    private fun generateGrid(forwardSpacing: Double, laneSpacing: Double, altitude: Double, speed: Double) {
+        // Simple Bounding Box Grid
+        var minLat = 90.0
+        var maxLat = -90.0
+        var minLng = 180.0
+        var maxLng = -180.0
+
+        for (wp in surveyAreaPoints) {
+            if (wp.latitude < minLat) minLat = wp.latitude
+            if (wp.latitude > maxLat) maxLat = wp.latitude
+            if (wp.longitude < minLng) minLng = wp.longitude
+            if (wp.longitude > maxLng) maxLng = wp.longitude
+        }
+
+        // Converters (approximate)
+        val latToMeters = 111111.0
+        val lngToMeters = 111111.0 * Math.cos(Math.toRadians(minLat))
+
+        val latSpacingDeg = laneSpacing / latToMeters
+        val lngSpacingDeg = forwardSpacing / lngToMeters
+
+        val newGridWps = mutableListOf<WaypointItem>()
+        val webViewPoints = mutableListOf<Map<String, Double>>()
+        var currentLat = minLat
+        var goingRight = true
+
+        while (currentLat <= maxLat) {
+            val linePoints = mutableListOf<Map<String, Double>>()
+            if (goingRight) {
+                var currentLng = minLng
+                while (currentLng <= maxLng) {
+                    if (isPointInPolygon(currentLat, currentLng, surveyAreaPoints)) {
+                        newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
+                        linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
+                    }
+                    currentLng += lngSpacingDeg
+                    if (newGridWps.size > 1000) break // Safety limit
+                }
+            } else {
+                var currentLng = maxLng
+                while (currentLng >= minLng) {
+                    if (isPointInPolygon(currentLat, currentLng, surveyAreaPoints)) {
+                        newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
+                        linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
+                    }
+                    currentLng -= lngSpacingDeg
+                    if (newGridWps.size > 1000) break // Safety limit
+                }
+            }
+            webViewPoints.addAll(linePoints)
+            currentLat += latSpacingDeg
+            goingRight = !goingRight
+            if (newGridWps.size > 1000) break // Safety limit
+        }
+
+        runOnUiThread {
+            mapWaypoints = newGridWps
+            isMappingGridActive = true
+            try {
+                val jsonArray = org.json.JSONArray()
+                for (p in webViewPoints) {
+                    val obj = org.json.JSONObject()
+                    obj.put("lat", p["lat"])
+                    obj.put("lng", p["lng"])
+                    jsonArray.put(obj)
+                }
+                mapWebView.evaluateJavascript("setGridPoints('$jsonArray')", null)
+            } catch (e: Exception) {
+                Log.e("TrueGCS", "Error serializing grid points", e)
+            }
+            Log.i("TrueGCS", "Grid generated with ${newGridWps.size} waypoints")
+        }
+    }
+
+    private fun isPointInPolygon(lat: Double, lng: Double, polygon: List<WaypointItem>): Boolean {
+        var intersectCount = 0
+        for (i in polygon.indices) {
+            val j = (i + 1) % polygon.size
+            val pi = polygon[i]
+            val pj = polygon[j]
+
+            if (((pi.longitude <= lng && lng < pj.longitude) || (pj.longitude <= lng && lng < pi.longitude)) &&
+                (lat < (pj.latitude - pi.latitude) * (lng - pi.longitude) / (pj.longitude - pi.longitude) + pi.latitude)
+            ) {
+                intersectCount++
+            }
+        }
+        return intersectCount % 2 != 0
     }
 
     private fun showCameraMenu() {
@@ -474,7 +680,7 @@ class DJIGCSActivity : AppCompatActivity() {
             // Combine map waypoints and mavlink waypoints (or just use map if present)
             val finalWps = if (mapWaypoints.isNotEmpty()) mapWaypoints else mavlinkHandler.getMissionItems()
             
-            VirtualStickMissionManager.startMission(finalWps, altOverride)
+            VirtualStickMissionManager.startMission(finalWps, altOverride, isMappingGridActive)
             dialog.dismiss()
         }
 
@@ -499,8 +705,12 @@ class DJIGCSActivity : AppCompatActivity() {
                     newList.add(WaypointItem(lat, lng, 30.0))
                 }
                 runOnUiThread {
-                    mapWaypoints = newList
-                    Log.i("TrueGCS", "Map waypoints updated: ${mapWaypoints.size}")
+                    if (isDrawingModeEnabled) {
+                        surveyAreaPoints = newList
+                    } else {
+                        mapWaypoints = newList
+                    }
+                    Log.i("TrueGCS", "Map points updated: ${newList.size} (DrawMode: $isDrawingModeEnabled)")
                 }
             } catch (e: Exception) {
                 Log.e("TrueGCS", "Error parsing map waypoints", e)
