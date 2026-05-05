@@ -7,31 +7,6 @@
     android:gravity="center_vertical"
     android:elevation="12dp">
 
-    <!-- Altitude Input -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:layout_marginEnd="16dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ALT (m)"
-            android:textColor="@color/white"
-            android:textSize="9sp" />
-        <EditText
-            android:id="@+id/edit_mission_alt"
-            android:layout_width="60dp"
-            android:layout_height="35dp"
-            android:background="@drawable/truegcs_btn_bg"
-            android:textColor="@color/truegcs_cyan"
-            android:gravity="center"
-            android:inputType="numberDecimal"
-            android:text="30.0"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-    </LinearLayout>
 
     <!-- Initiate Button -->
     <Button

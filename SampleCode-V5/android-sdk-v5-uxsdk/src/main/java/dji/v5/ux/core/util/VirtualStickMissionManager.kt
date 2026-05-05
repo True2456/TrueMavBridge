@@ -147,7 +147,7 @@ object VirtualStickMissionManager {
             return
         }
         
-        // Apply altitude override if provided
+        // Apply altitude override only if explicitly provided
         val finalWaypoints = if (altOverride != null) {
             waypoints.map { it.copy(altitude = altOverride) }
         } else {

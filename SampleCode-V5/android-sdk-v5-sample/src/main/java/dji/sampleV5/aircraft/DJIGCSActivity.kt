@@ -151,10 +151,16 @@ class DJIGCSActivity : AppCompatActivity() {
             }
         }
 
-        // 🔄 VIEW SWAP: Toggle between Video and Map
-        findViewById<View>(R.id.pip_click_overlay).setOnClickListener {
+        // 🔄 VIEW SWAP & DRAG: Handle PIP dragging and clicking
+        val pipContainer = findViewById<View>(R.id.pip_view_container)
+        val pipOverlay = findViewById<View>(R.id.pip_click_overlay)
+        enableDrag(pipOverlay, targetView = pipContainer) {
             toggleMapSwap()
         }
+        enableDrag(findViewById(R.id.left_dashboard))
+        enableDrag(findViewById(R.id.widget_camera_controls))
+        enableDrag(findViewById(R.id.widget_camera_config))
+
         touchOverlay = findViewById(R.id.touch_overlay)
         cameraQuickConfig = findViewById(R.id.widget_camera_config)
         cameraSettingsDrawer = findViewById(R.id.camera_settings_drawer)
@@ -185,6 +191,10 @@ class DJIGCSActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.btn_mission_menu).setOnClickListener {
+            showMissionMenu()
+        }
+
+        findViewById<View>(R.id.btn_takeoff_land).setOnClickListener {
             KeyManager.getInstance().performAction(KeyTools.createKey(FlightControllerKey.KeyStartTakeoff), object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
                 override fun onSuccess(t: EmptyMsg?) { Log.i("TrueGCS", "Takeoff Success") }
                 override fun onFailure(error: IDJIError) { Log.e("TrueGCS", "Takeoff Failed: ${error.description()}") }
@@ -408,6 +418,63 @@ class DJIGCSActivity : AppCompatActivity() {
                 Log.e("TrueGCS", "Error serializing grid points", e)
             }
             Log.i("TrueGCS", "Grid generated with ${newGridWps.size} waypoints")
+        }
+    }
+
+    private fun enableDrag(view: View, targetView: View = view, onClick: (() -> Unit)? = null) {
+        var dX = 0f
+        var dY = 0f
+        var startTime = 0L
+        var initialX = 0f
+        var initialY = 0f
+        var isDragging = false
+        val dragThreshold = 400L // ms
+        val clickThreshold = 10f // pixels
+
+        view.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    dX = targetView.x - event.rawX
+                    dY = targetView.y - event.rawY
+                    initialX = event.rawX
+                    initialY = event.rawY
+                    startTime = System.currentTimeMillis()
+                    isDragging = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dist = Math.sqrt(Math.pow((event.rawX - initialX).toDouble(), 2.0) + Math.pow((event.rawY - initialY).toDouble(), 2.0))
+                    if (!isDragging && (System.currentTimeMillis() - startTime > dragThreshold) && dist > clickThreshold) {
+                        isDragging = true
+                        targetView.animate().scaleX(1.05f).scaleY(1.05f).setDuration(100).start()
+                    }
+                    if (isDragging) {
+                        val newX = event.rawX + dX
+                        var newY = event.rawY + dY
+                        
+                        // Boundary check: Don't go above the top status bar (approx 46dp)
+                        val topBoundary = 46 * view.resources.displayMetrics.density
+                        if (newY < topBoundary) newY = topBoundary
+                        
+                        targetView.x = newX
+                        targetView.y = newY
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val duration = System.currentTimeMillis() - startTime
+                    val dist = Math.sqrt(Math.pow((event.rawX - initialX).toDouble(), 2.0) + Math.pow((event.rawY - initialY).toDouble(), 2.0))
+                    
+                    if (isDragging) {
+                        targetView.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                    } else if (duration < dragThreshold && dist < clickThreshold) {
+                        onClick?.invoke()
+                    }
+                    isDragging = false
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -643,12 +710,20 @@ class DJIGCSActivity : AppCompatActivity() {
             mainContainer.addView(mapView, 0)
             (pipContainer as? android.view.ViewGroup)?.addView(fpvView, 0)
             
+            // Hide camera UI to clear map view
+            findViewById<View>(R.id.widget_camera_controls).visibility = View.GONE
+            findViewById<View>(R.id.widget_camera_config).visibility = View.GONE
+            
             // Hide camera touch overlay so we can interact with the map
             touchOverlay.visibility = View.GONE
         } else {
             // FPV to Fullscreen, Map to PIP
             mainContainer.addView(fpvView, 0)
             (pipContainer as? android.view.ViewGroup)?.addView(mapView, 0)
+            
+            // Restore camera UI
+            findViewById<View>(R.id.widget_camera_controls).visibility = View.VISIBLE
+            findViewById<View>(R.id.widget_camera_config).visibility = View.VISIBLE
             
             // Restore camera touch overlay
             touchOverlay.visibility = View.VISIBLE
@@ -672,15 +747,11 @@ class DJIGCSActivity : AppCompatActivity() {
         params?.y = (100 * resources.displayMetrics.density).toInt() // Distance from bottom
         window?.attributes = params
 
-        val editAlt = dialogView.findViewById<EditText>(R.id.edit_mission_alt)
-
         dialogView.findViewById<View>(R.id.btn_execute_mission).setOnClickListener {
-            val altOverride = editAlt.text.toString().toDoubleOrNull() ?: 30.0
-            
-            // Combine map waypoints and mavlink waypoints (or just use map if present)
+            // Respect individual waypoint altitudes
             val finalWps = if (mapWaypoints.isNotEmpty()) mapWaypoints else mavlinkHandler.getMissionItems()
             
-            VirtualStickMissionManager.startMission(finalWps, altOverride, isMappingGridActive)
+            VirtualStickMissionManager.startMission(finalWps, null, isMappingGridActive)
             dialog.dismiss()
         }
 
@@ -702,7 +773,8 @@ class DJIGCSActivity : AppCompatActivity() {
                     val obj = array.getJSONObject(i)
                     val lat = obj.getDouble("lat")
                     val lng = obj.getDouble("lng")
-                    newList.add(WaypointItem(lat, lng, 30.0))
+                    val alt = obj.optDouble("alt", 100.0)
+                    newList.add(WaypointItem(lat, lng, alt))
                 }
                 runOnUiThread {
                     if (isDrawingModeEnabled) {

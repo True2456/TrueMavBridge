@@ -21,6 +21,56 @@
             z-index: 1000;
             pointer-events: none;
         }
+        /* Tactical Popup Styling */
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: rgba(10, 15, 20, 0.95) !important;
+            color: #0ff !important;
+            border: 1px solid #0ff;
+            border-radius: 4px;
+        }
+        .leaflet-popup-content {
+            margin: 12px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .popup-title {
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+        }
+        .popup-label {
+            font-size: 10px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .popup-input {
+            background: #000;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            width: 60px;
+            outline: none;
+        }
+        .popup-btn-delete {
+            margin-top: 10px;
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff5555;
+            border: 1px solid #ff5555;
+            width: 100%;
+            padding: 5px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 2px;
+        }
+        .popup-btn-delete:active {
+            background: #ff5555;
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -118,13 +168,18 @@
                 draggable: true
             }).addTo(waypointLayer);
 
-            var wp = { lat: lat, lng: lng, marker: wpMarker };
+            var wp = { lat: lat, lng: lng, alt: 100.0, marker: wpMarker };
             waypoints.push(wp);
 
-            wpMarker.on('click', function(e) {
-                L.DomEvent.stopPropagation(e);
-                removeWaypoint(wp);
-            });
+            wpMarker.bindPopup(`
+                <div class="popup-title">WAYPOINT ${index}</div>
+                <div class="popup-label">Target Altitude</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" class="popup-input" value="100.0" onchange="updateWpAlt(${index-1}, this.value)">
+                    <span style="font-size:12px;">METERS</span>
+                </div>
+                <button class="popup-btn-delete" onclick="removeWaypointByIndex(${index-1})">Terminate Waypoint</button>
+            `);
 
             wpMarker.on('dragend', function(e) {
                 var pos = wpMarker.getLatLng();
@@ -134,6 +189,19 @@
             });
 
             syncWaypoints();
+        }
+
+        function updateWpAlt(idx, val) {
+            if (waypoints[idx]) {
+                waypoints[idx].alt = parseFloat(val);
+                syncWaypoints();
+            }
+        }
+
+        function removeWaypointByIndex(idx) {
+            if (waypoints[idx]) {
+                removeWaypoint(waypoints[idx]);
+            }
         }
 
         function removeFirstWaypoint() {
@@ -147,6 +215,15 @@
             waypoints = waypoints.filter(w => w !== wp);
             waypoints.forEach((w, i) => {
                 var idx = i + 1;
+                w.marker.setPopupContent(`
+                    <div class="popup-title">WAYPOINT ${idx}</div>
+                    <div class="popup-label">Target Altitude</div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" class="popup-input" value="${w.alt}" onchange="updateWpAlt(${i}, this.value)">
+                        <span style="font-size:12px;">METERS</span>
+                    </div>
+                    <button class="popup-btn-delete" onclick="removeWaypointByIndex(${i})">Terminate Waypoint</button>
+                `);
                 w.marker.setIcon(L.divIcon({
                     className: 'wp-icon',
                     html: '<div style="background:#0ff; color:#000; width:24px; height:24px; border-radius:50%; border:2px solid #000; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">' + idx + '</div>',
@@ -168,7 +245,7 @@
             }
 
             if (window.Android) {
-                var data = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
+                var data = waypoints.map(w => ({ lat: w.lat, lng: w.lng, alt: w.alt }));
                 window.Android.onWaypointsChanged(JSON.stringify(data));
             }
         }
