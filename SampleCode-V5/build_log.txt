@@ -8,10 +8,10 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Configure project :uxsdk
 WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
 
-> Task :sample:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :uxsdk:preBuild UP-TO-DATE
-> Task :sample:preBuild UP-TO-DATE
+> Task :sample:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :uxsdk:preDebugBuild UP-TO-DATE
+> Task :sample:preBuild UP-TO-DATE
 > Task :sample:preDebugBuild UP-TO-DATE
 > Task :uxsdk:generateDebugResValues UP-TO-DATE
 > Task :uxsdk:generateDebugResources UP-TO-DATE
@@ -31,11 +31,11 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :sample:dataBindingGenBaseClassesDebug UP-TO-DATE
 > Task :sample:checkDebugAarMetadata UP-TO-DATE
 > Task :uxsdk:compileDebugLibraryResources UP-TO-DATE
-> Task :sample:processDebugMainManifest UP-TO-DATE
 > Task :uxsdk:parseDebugLocalResources UP-TO-DATE
+> Task :sample:processDebugMainManifest UP-TO-DATE
 > Task :sample:processDebugManifest UP-TO-DATE
-> Task :sample:processDebugManifestForPackage UP-TO-DATE
 > Task :uxsdk:generateDebugRFile UP-TO-DATE
+> Task :sample:processDebugManifestForPackage UP-TO-DATE
 > Task :uxsdk:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :sample:processDebugResources UP-TO-DATE
 > Task :uxsdk:kaptGenerateStubsDebugKotlin UP-TO-DATE
@@ -48,36 +48,18 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :sample:kaptDebugKotlin UP-TO-DATE
 
 > Task :sample:compileDebugKotlin FAILED
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:10:21 Conflicting import: imported name 'LayoutInflater' is ambiguous.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:11:20 Conflicting import: imported name 'AlertDialog' is ambiguous.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:60:21 Conflicting import: imported name 'LayoutInflater' is ambiguous.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:61:31 Conflicting import: imported name 'AlertDialog' is ambiguous.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:258:22 None of the following candidates is applicable:
-class AlertDialog : Dialog, DialogInterface
-class AlertDialog : AppCompatDialog, DialogInterface
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:258:34 Unresolved reference 'Builder'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:260:14 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:262:16 Unresolved reference 'show'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:264:29 Unresolved reference 'window'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:343:20 Unresolved reference 'dismiss'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:419:24 Assignment type mismatch: actual type is 'kotlin.collections.List<dji.v5.ux.core.util.WaypointItem>', but 'kotlin.collections.MutableList<dji.v5.ux.core.util.WaypointItem>' was expected.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:514:22 None of the following candidates is applicable:
-class AlertDialog : Dialog, DialogInterface
-class AlertDialog : AppCompatDialog, DialogInterface
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:514:34 Unresolved reference 'Builder'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:516:14 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:518:16 Unresolved reference 'show'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:520:29 Unresolved reference 'window'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:750:22 None of the following candidates is applicable:
-class AlertDialog : Dialog, DialogInterface
-class AlertDialog : AppCompatDialog, DialogInterface
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:750:34 Unresolved reference 'Builder'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:752:14 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:754:16 Unresolved reference 'show'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:757:29 Unresolved reference 'window'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:770:20 Unresolved reference 'dismiss'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:775:20 Unresolved reference 'dismiss'.
-e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:778:16 Unresolved reference 'show'.
+e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:382:13 Conflicting declarations:
+local val latToMeters: Double
+local val latToMeters: Double
+e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:383:13 Conflicting declarations:
+local val lngToMeters: Double
+local val lngToMeters: Double
+e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:407:13 Conflicting declarations:
+local val latToMeters: Double
+local val latToMeters: Double
+e: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-sample/src/main/java/dji/sampleV5/aircraft/DJIGCSActivity.kt:408:13 Conflicting declarations:
+local val lngToMeters: Double
+local val lngToMeters: Double
 
 [Incubating] Problems report is available at: file:///Users/true/Coding/DJI-DEV/Mobile-SDK-Android-V5/SampleCode-V5/android-sdk-v5-as/build/reports/problems/problems-report.html
 
@@ -100,5 +82,5 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.12/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 4s
+BUILD FAILED in 7s
 32 actionable tasks: 1 executed, 31 up-to-date

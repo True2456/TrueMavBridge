@@ -11,20 +11,25 @@
         android:padding="16dp">
 
         <TextView
+            android:id="@+id/txt_mapping_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2D PHOTOGRAMMETRY"
+            android:text="2D SURVEY"
             android:textColor="@color/truegcs_cyan"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold"
-            android:layout_gravity="center_horizontal" />
+            android:layout_gravity="center_horizontal"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
 
         <TextView
+            android:id="@+id/txt_mapping_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nadir Mapping Grid (Mini 3 / 4:3)"
-            android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:text="TAP TITLE TO TOGGLE 2D/3D"
+            android:textColor="#88AAAAAA"
+            android:textSize="8sp"
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="12dp" />
 
@@ -62,6 +67,28 @@
 
         <EditText
             android:id="@+id/edit_mapping_speed"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@drawable/truegcs_btn_bg"
+            android:inputType="numberDecimal"
+            android:text="5"
+            android:textColor="@color/truegcs_cyan"
+            android:padding="8dp"
+            android:textSize="14sp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- MARGIN -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MARGIN / OVERSHOOT (M)"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="2dp" />
+
+        <EditText
+            android:id="@+id/edit_mapping_margin"
             android:layout_width="match_parent"
             android:layout_height="40dp"
             android:background="@drawable/truegcs_btn_bg"

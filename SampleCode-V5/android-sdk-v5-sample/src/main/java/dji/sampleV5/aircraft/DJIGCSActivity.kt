@@ -273,6 +273,32 @@ class DJIGCSActivity : AppCompatActivity() {
         val txtInfo = dialogView.findViewById<TextView>(R.id.txt_mapping_info)
         val toggleDraw = dialogView.findViewById<android.widget.ToggleButton>(R.id.toggle_draw_area)
         val btnClear = dialogView.findViewById<View>(R.id.btn_clear_map)
+        val titleText = dialogView.findViewById<TextView>(R.id.txt_mapping_title)
+        val btnPrepGimbal = dialogView.findViewById<Button>(R.id.btn_prep_gimbal)
+        
+        var is3DMode = false
+
+        titleText.setOnClickListener {
+            is3DMode = !is3DMode
+            if (is3DMode) {
+                titleText.text = "3D OBLIQUE"
+                titleText.setTextColor(Color.parseColor("#FFCC00")) // Gold for 3D
+                btnPrepGimbal.text = "PREP GIMBAL (-45°)"
+            } else {
+                titleText.text = "2D SURVEY"
+                titleText.setTextColor(Color.parseColor("#00FFFF"))
+                btnPrepGimbal.text = "PREP GIMBAL (-90°)"
+            }
+            updateMappingInfo(txtInfo, editAlt.text.toString().toDoubleOrNull() ?: 50.0, is3DMode)
+        }
+
+        editAlt.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                updateMappingInfo(txtInfo, s.toString().toDoubleOrNull() ?: 50.0, is3DMode)
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         toggleDraw.isChecked = isDrawingModeEnabled
         toggleDraw.setOnCheckedChangeListener { _, isChecked ->
@@ -287,35 +313,16 @@ class DJIGCSActivity : AppCompatActivity() {
             isMappingGridActive = false
         }
 
-        // Detect Product Type to adjust multipliers (default to Mini 3 values)
-        var forwardMult = 0.32
-        var laneMult = 0.42
-        
-        KeyManager.getInstance().getValue(KeyTools.createKey(ProductKey.KeyProductType), object: CommonCallbacks.CompletionCallbackWithParam<ProductType> {
-            override fun onSuccess(type: ProductType?) {
-                if (type == ProductType.DJI_MINI_3 || type == ProductType.DJI_MINI_3_PRO) {
-                    forwardMult = 0.32
-                    laneMult = 0.42
-                }
-                // Update info text based on initial altitude
-                updateMappingInfo(txtInfo, editAlt.text.toString().toDoubleOrNull() ?: 50.0, forwardMult, laneMult)
-            }
-            override fun onFailure(error: IDJIError) {}
-        })
-
-        // Prep Gimbal to -90
-        dialogView.findViewById<View>(R.id.btn_prep_gimbal).setOnClickListener {
-            // In V5, we use KeyRotateByAngle with a GimbalAngleRotation object
-            // However, since we can't easily find the RotationMode enum in this environment,
-            // we'll try a simpler approach if available or just set the pitch property.
+        // Prep Gimbal logic
+        btnPrepGimbal.setOnClickListener {
+            val targetPitch = if (is3DMode) -45.0 else -90.0
             try {
                 val rotation = dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation()
-                rotation.pitch = -90.0
-                // Most V5 gimbals default to absolute angle if mode is not set or 0
+                rotation.pitch = targetPitch
                 
                 KeyManager.getInstance().performAction(KeyTools.createKey(GimbalKey.KeyRotateByAngle, ComponentIndexType.LEFT_OR_MAIN), rotation, object: CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
                     override fun onSuccess(msg: EmptyMsg?) {
-                        Log.i("TrueGCS", "Gimbal prepped to -90")
+                        Log.i("TrueGCS", "Gimbal prepped to $targetPitch")
                     }
                     override fun onFailure(error: IDJIError) {
                         Log.e("TrueGCS", "Gimbal prep failed: ${error.description()}")
@@ -335,7 +342,12 @@ class DJIGCSActivity : AppCompatActivity() {
 
             val alt = editAlt.text.toString().toDoubleOrNull() ?: 50.0
             val speed = editSpeed.text.toString().toDoubleOrNull() ?: 5.0
+            val margin = dialogView.findViewById<EditText>(R.id.edit_mapping_margin).text.toString().toDoubleOrNull() ?: 5.0
             
+            // Multipliers: 2D Nadir (70/70) vs 3D Oblique (80/80)
+            val forwardMult = if (is3DMode) 0.25 else 0.32
+            val laneMult = if (is3DMode) 0.35 else 0.42
+
             val forwardSpacing = Math.max(1.0, forwardMult * alt)
             val laneSpacing = Math.max(1.0, laneMult * alt)
 
@@ -343,29 +355,41 @@ class DJIGCSActivity : AppCompatActivity() {
             it.isEnabled = false
             it.alpha = 0.5f
             
-            generateGrid(forwardSpacing, laneSpacing, alt, speed)
+            generateGrid(forwardSpacing, laneSpacing, alt, speed, is3DMode, margin)
             dialog.dismiss()
         }
     }
 
-    private fun updateMappingInfo(view: TextView, alt: Double, forwardMult: Double, laneMult: Double) {
+    private fun updateMappingInfo(view: TextView, alt: Double, is3D: Boolean) {
+        val forwardMult = if (is3D) 0.25 else 0.32
+        val laneMult = if (is3D) 0.35 else 0.42
+        val overlap = if (is3D) "80%+" else "70%"
+        val pattern = if (is3D) "Double (Crosshatch)" else "Single (Horizontal)"
+        
         val fs = forwardMult * alt
         val ls = laneMult * alt
-        view.text = String.format("Forward Spacing: %.1fm\nLane Spacing: %.1fm\nOverlap: 70%%", fs, ls)
+        view.text = String.format("Pattern: %s\nForward Spacing: %.1fm\nLane Spacing: %.1fm\nOverlap: %s", pattern, fs, ls, overlap)
     }
 
-    private fun generateGrid(forwardSpacing: Double, laneSpacing: Double, altitude: Double, speed: Double) {
+    private fun generateGrid(forwardSpacing: Double, laneSpacing: Double, altitude: Double, speed: Double, isCrosshatch: Boolean = false, margin: Double = 5.0) {
         if (isGeneratingGrid) return
         isGeneratingGrid = true
 
-        // Capture survey points to avoid concurrent modification issues
+        // Capture survey points
         val corners = surveyAreaPoints.toList()
         
-        // Simple Bounding Box Grid
-        var minLat = 90.0
-        var maxLat = -90.0
-        var minLng = 180.0
-        var maxLng = -180.0
+        // Converters (approximate)
+        val latToMeters = 111111.0
+        val lngToMeters = 111111.0 * Math.cos(Math.toRadians(corners.firstOrNull()?.latitude ?: 0.0))
+
+        val marginLatDeg = margin / latToMeters
+        val marginLngDeg = margin / lngToMeters
+
+        // Simple Bounding Box Grid (Expanded by margin)
+        var minLat = 90.0 + marginLatDeg
+        var maxLat = -90.0 - marginLatDeg
+        var minLng = 180.0 + marginLngDeg
+        var maxLng = -180.0 - marginLngDeg
 
         for (wp in corners) {
             if (wp.latitude < minLat) minLat = wp.latitude
@@ -373,28 +397,31 @@ class DJIGCSActivity : AppCompatActivity() {
             if (wp.longitude < minLng) minLng = wp.longitude
             if (wp.longitude > maxLng) maxLng = wp.longitude
         }
-
-        // Converters (approximate)
-        val latToMeters = 111111.0
-        val lngToMeters = 111111.0 * Math.cos(Math.toRadians(minLat))
+        
+        minLat -= marginLatDeg
+        maxLat += marginLatDeg
+        minLng -= marginLngDeg
+        maxLng += marginLngDeg
 
         val latSpacingDeg = laneSpacing / latToMeters
         val lngSpacingDeg = forwardSpacing / lngToMeters
 
         val newGridWps = mutableListOf<WaypointItem>()
         val webViewPoints = mutableListOf<Map<String, Double>>()
-        var currentLat = minLat
-        var goingRight = true
-
+        
         thread {
             try {
-                Log.i("TrueGCS", "Starting grid gen: Spacing L=$laneSpacing, F=$forwardSpacing")
+                Log.i("TrueGCS", "Starting grid gen (Crosshatch: $isCrosshatch)")
+                
+                // PASS 1: Lat-wise (Standard)
+                var currentLat = minLat
+                var goingRight = true
                 while (currentLat <= maxLat && newGridWps.size < 1000) {
                     val linePoints = mutableListOf<Map<String, Double>>()
                     if (goingRight) {
                         var currentLng = minLng
                         while (currentLng <= maxLng && newGridWps.size < 1000) {
-                            if (isPointInPolygon(currentLat, currentLng, corners)) {
+                            if (isPointInPolygonWithMargin(currentLat, currentLng, corners, marginLatDeg, marginLngDeg)) {
                                 newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
                                 linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
                             }
@@ -403,7 +430,7 @@ class DJIGCSActivity : AppCompatActivity() {
                     } else {
                         var currentLng = maxLng
                         while (currentLng >= minLng && newGridWps.size < 1000) {
-                            if (isPointInPolygon(currentLat, currentLng, corners)) {
+                            if (isPointInPolygonWithMargin(currentLat, currentLng, corners, marginLatDeg, marginLngDeg)) {
                                 newGridWps.add(WaypointItem(currentLat, currentLng, altitude, 0L, speed))
                                 linePoints.add(mapOf("lat" to currentLat, "lng" to currentLng))
                             }
@@ -413,6 +440,39 @@ class DJIGCSActivity : AppCompatActivity() {
                     webViewPoints.addAll(linePoints)
                     currentLat += latSpacingDeg
                     goingRight = !goingRight
+                }
+
+                // PASS 2: Lng-wise (Vertical) if Crosshatch
+                if (isCrosshatch && newGridWps.size < 1000) {
+                    Log.i("TrueGCS", "Starting Pass 2 for Crosshatch")
+                    var currentLng = minLng
+                    var goingDown = true
+                    // Invert spacing for vertical pass (Forward becomes Lane and vice-versa)
+                    while (currentLng <= maxLng && newGridWps.size < 1000) {
+                        val linePoints = mutableListOf<Map<String, Double>>()
+                        if (goingDown) {
+                            var vLat = maxLat
+                            while (vLat >= minLat && newGridWps.size < 1000) {
+                                if (isPointInPolygonWithMargin(vLat, currentLng, corners, marginLatDeg, marginLngDeg)) {
+                                    newGridWps.add(WaypointItem(vLat, currentLng, altitude, 0L, speed))
+                                    linePoints.add(mapOf("lat" to vLat, "lng" to currentLng))
+                                }
+                                vLat -= lngSpacingDeg
+                            }
+                        } else {
+                            var vLat = minLat
+                            while (vLat <= maxLat && newGridWps.size < 1000) {
+                                if (isPointInPolygonWithMargin(vLat, currentLng, corners, marginLatDeg, marginLngDeg)) {
+                                    newGridWps.add(WaypointItem(vLat, currentLng, altitude, 0L, speed))
+                                    linePoints.add(mapOf("lat" to vLat, "lng" to currentLng))
+                                }
+                                vLat += lngSpacingDeg
+                            }
+                        }
+                        webViewPoints.addAll(linePoints)
+                        currentLng += latSpacingDeg
+                        goingDown = !goingDown
+                    }
                 }
                 
                 runOnUiThread {
@@ -499,6 +559,39 @@ class DJIGCSActivity : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+    }
+
+    private fun isPointInPolygonWithMargin(lat: Double, lng: Double, polygon: List<WaypointItem>, marginLat: Double, marginLng: Double): Boolean {
+        if (isPointInPolygon(lat, lng, polygon)) return true
+        if (marginLat <= 0 && marginLng <= 0) return false
+        
+        // Simple distance-to-edge check
+        for (i in polygon.indices) {
+            val p1 = polygon[i]
+            val p2 = polygon[(i + 1) % polygon.size]
+            
+            // Distance from point to segment p1-p2
+            val dist = distanceToSegment(lat, lng, p1.latitude, p1.longitude, p2.latitude, p2.longitude)
+            if (dist <= Math.max(marginLat, marginLng)) return true
+        }
+        return false
+    }
+
+    private fun distanceToSegment(px: Double, py: Double, x1: Double, y1: Double, x2: Double, y2: Double): Double {
+        val dx = x2 - x1
+        val dy = y2 - y1
+        if (dx == 0.0 && dy == 0.0) return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1))
+        
+        val t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+        return if (t < 0) {
+            Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1))
+        } else if (t > 1) {
+            Math.sqrt((px - x2) * (px - x2) + (py - y2) * (py - y2))
+        } else {
+            val nearestX = x1 + t * dx
+            val nearestY = y1 + t * dy
+            Math.sqrt((px - nearestX) * (px - nearestX) + (py - nearestY) * (py - nearestY))
         }
     }
 
