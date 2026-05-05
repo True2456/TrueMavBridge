@@ -24,6 +24,16 @@ ext {
     deps.material = 'com.google.android.material:material:1.0.0'//AvoidanceShortcutWidget使用
     deps.lynx = 'com.github.pedrovgs:lynx:1.1.0'// app显示logcat
 
+        // TensorFlow Lite
+    deps.tflite = "org.tensorflow:tensorflow-lite:2.14.0"
+    deps.tfliteGpu = "org.tensorflow:tensorflow-lite-gpu:2.14.0"
+    deps.tfliteSupport = "org.tensorflow:tensorflow-lite-support:0.4.4"
+    // AI / Vision
+    deps.onnxruntime = "com.microsoft.onnxruntime:onnxruntime-android:1.18.0"
+    deps.imageTensor = "androidx.camera:camera-core:1.2.3"
+
+    
+
     /*RTK设置页面使用-start*/
     deps.mikepenzCommunityMaterial = "com.mikepenz:community-material-typeface:3.5.95.1-kotlin@aar"
     deps.mikepenzGoogleMaterial = 'com.mikepenz:google-material-typeface:3.0.1.4.original-kotlin@aar'
