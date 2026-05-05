@@ -57,6 +57,38 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!-- Left Command Sidebar -->
+        <LinearLayout
+            android:id="@+id/left_sidebar"
+            android:layout_width="60dp"
+            android:layout_height="match_parent"
+            android:layout_marginTop="50dp"
+            android:background="@color/truegcs_dark_transparent"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="20dp"
+            android:elevation="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageButton
+                android:id="@+id/btn_mission_menu"
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:background="@drawable/truegcs_btn_bg"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/uxsdk_fpv_hsi_waypoint"
+                app:tint="@color/truegcs_cyan" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MISSION"
+                android:textColor="@color/truegcs_cyan"
+                android:textSize="10sp" />
+        </LinearLayout>
+
         <!-- Top Status Bar Panel -->
         <dji.v5.ux.core.panel.topbar.TopBarPanelWidget
             android:id="@+id/panel_top_bar"

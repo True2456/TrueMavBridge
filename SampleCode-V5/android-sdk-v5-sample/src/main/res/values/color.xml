@@ -92,5 +92,9 @@
     <color name="truegcs_cyan">#00ddff</color>
     <color name="truegcs_cyan_transparent">#2600ddff</color>
     <color name="truegcs_dark_secondary">#111a22</color>
-    <color name="truegcs_dark_transparent">#80111a22</color>
+
+    <color name="truegcs_btn_bg">#2600ddff</color>
+    <color name="truegcs_btn_press">#4D00ddff</color>
+    <color name="truegcs_dark_transparent">#CC090e11</color>
+    <color name="truegcs_dark_transparent_secondary">#CC111a22</color>
 </resources>

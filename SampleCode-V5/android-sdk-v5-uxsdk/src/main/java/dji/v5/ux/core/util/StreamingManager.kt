@@ -1,9 +1,11 @@
 package dji.v5.ux.core.util
+import dji.v5.manager.datacenter.MediaDataCenter
+import dji.v5.manager.datacenter.livestream.StreamQuality
+import dji.v5.manager.datacenter.livestream.LiveVideoBitrateMode
 
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
 import dji.v5.manager.KeyManager
-import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
 import dji.v5.utils.common.DJIExecutor
 import dji.v5.utils.common.LogUtils
@@ -24,6 +26,18 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Singleton to manage UDP video and MAVLink telemetry streaming.
  */
 object StreamingManager {
+
+    fun setLiveStreamQuality(quality: StreamQuality) {
+        MediaDataCenter.getInstance().liveStreamManager.liveStreamQuality = quality
+    }
+
+    fun setLiveVideoBitrateMode(mode: LiveVideoBitrateMode) {
+        MediaDataCenter.getInstance().liveStreamManager.liveVideoBitrateMode = mode
+    }
+
+    fun setLiveVideoBitrate(bitrate: Int) {
+        MediaDataCenter.getInstance().liveStreamManager.liveVideoBitrate = bitrate
+    }
     private const val TAG = "StreamingManager"
     private var telemetrySocket: DatagramSocket? = null
     
@@ -176,7 +190,7 @@ object StreamingManager {
         sendMavlinkPacket(24, payload.array())
     }
 
-    private fun sendMavlinkPacket(msgId: Int, payload: ByteArray) {
+    fun sendMavlinkPacket(msgId: Int, payload: ByteArray) {
         val packet = ByteBuffer.allocate(payload.size + 8).order(ByteOrder.LITTLE_ENDIAN)
         packet.put(0xFE.toByte())      // STX
         packet.put(payload.size.toByte())

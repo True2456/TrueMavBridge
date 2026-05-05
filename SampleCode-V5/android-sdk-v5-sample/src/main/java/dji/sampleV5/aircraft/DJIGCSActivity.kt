@@ -12,6 +12,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.Button
+import android.widget.ImageButton
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +35,11 @@ import dji.v5.ux.core.widget.compass.CompassWidget
 import dji.v5.ux.core.widget.setting.SettingPanelWidget
 import dji.v5.ux.visualcamera.CameraVisiblePanelWidget
 import dji.v5.ux.core.util.ViewUtil
+import android.view.LayoutInflater
+import androidx.appcompat.app.AlertDialog
+import dji.v5.ux.core.util.StreamingManager
+import dji.v5.ux.core.util.MavlinkMissionHandler
+import dji.v5.ux.core.util.VirtualStickMissionManager
 import dji.v5.ux.cameracore.widget.cameracontrols.CameraControlsWidget
 import dji.v5.et.create
 import dji.v5.et.set
@@ -64,7 +70,10 @@ class DJIGCSActivity : AppCompatActivity() {
     private var focusIcon: ImageView? = null
     private val handler = Handler(Looper.getMainLooper())
 
-    private val availableCameraUpdatedListener = object : ICameraStreamManager.AvailableCameraUpdatedListener {
+    private lateinit var mavlinkHandler: MavlinkMissionHandler
+    private lateinit var btnMissionMenu: ImageButton
+
+    private val availableCameraUpdatedListener: ICameraStreamManager.AvailableCameraUpdatedListener = object : ICameraStreamManager.AvailableCameraUpdatedListener {
         override fun onAvailableCameraUpdated(availableCameraList: List<ComponentIndexType>) {
             if (availableCameraList.isNotEmpty()) {
                 val cameraIndex = availableCameraList[0]
@@ -77,7 +86,7 @@ class DJIGCSActivity : AppCompatActivity() {
         }
 
         override fun onCameraStreamEnableUpdate(cameraStreamEnableMap: Map<ComponentIndexType, Boolean>) {
-            // No-op
+            // No-op - Required by DJI SDK to prevent AbstractMethodError crash
         }
     }
 
@@ -141,6 +150,19 @@ class DJIGCSActivity : AppCompatActivity() {
                 drawerLayout.openDrawer(GravityCompat.END)
             }
         }
+
+        // --- NEW: MISSION LOGIC ---
+        btnMissionMenu = findViewById(R.id.btn_mission_menu)
+
+        StreamingManager.startTelemetryStreaming(14550, "255.255.255.255")
+        mavlinkHandler = MavlinkMissionHandler { msgId, payload ->
+            StreamingManager.sendMavlinkPacket(msgId, payload)
+        }
+
+        btnMissionMenu.setOnClickListener {
+            showMissionMenu()
+        }
+        // ---------------------------
 
         // Hide the persistent metering circle by default
         val cameraIndex = ComponentIndexType.LEFT_OR_MAIN
@@ -232,6 +254,25 @@ class DJIGCSActivity : AppCompatActivity() {
             // Restore camera touch overlay
             touchOverlay.visibility = View.VISIBLE
         }
+    }
+
+    private fun showMissionMenu() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_mission_menu, null)
+        val dialog = AlertDialog.Builder(this, R.style.TransparentDialog)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<View>(R.id.btn_execute_mission).setOnClickListener {
+            VirtualStickMissionManager.startMission(mavlinkHandler.getMissionItems())
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<View>(R.id.btn_abort_mission).setOnClickListener {
+            VirtualStickMissionManager.stopMission()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     override fun onDestroy() {
